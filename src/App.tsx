@@ -74,7 +74,7 @@ const VitametrasApp: React.FC = () => {
   );
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] font-sans antialiased text-slate-900 pb-32">
+    <div className="min-h-screen bg-slate-50 font-sans antialiased text-slate-900 flex flex-col">
       <Header 
         isLoggedIn={!!currentUser} 
         currentUser={currentUser}
@@ -82,13 +82,13 @@ const VitametrasApp: React.FC = () => {
         onLogoutClick={() => apiService.logout()}
       />
 
-      <main className="container mx-auto px-4 pt-24 max-w-2xl animate-in fade-in duration-700">
+      {/* AJUSTE: Aumento de pb-40 para que nada quede oculto tras el menú inferior */}
+      <main className="flex-grow container mx-auto px-4 pt-24 pb-40 max-w-md animate-in fade-in duration-700">
         <Routes>
           <Route path="/" element={!currentUser ? <HomeTab onStartClick={() => setIsLoginOpen(true)} /> : <Navigate to="/analyzer" />} />
           
           <Route path="/analyzer" element={currentUser ? (
             <div className="space-y-6">
-              {/* Tarjetas de Calibración Pendiente (UX de alta retención) */}
               {history.filter(e => !e.isCalibrated && e.totalCarbs > 0).slice(0, 1).map(entry => (
                 <GlucoseCalibrationCard 
                   key={entry.id} 
@@ -97,14 +97,14 @@ const VitametrasApp: React.FC = () => {
                 />
               ))}
               
-              <div className="bg-white rounded-[3rem] p-8 shadow-xl border border-slate-50">
-                 <div className="flex items-center gap-3 mb-8">
+              <div className="bg-white rounded-[2.5rem] p-6 shadow-xl shadow-slate-200/50 border border-white">
+                 <div className="flex items-center gap-3 mb-6">
                     <div className="p-3 bg-blue-600 text-white rounded-2xl shadow-lg shadow-blue-100">
                         <PlusCircle size={24} />
                     </div>
                     <div>
-                        <h2 className="text-2xl font-[1000] tracking-tighter uppercase italic leading-none">Nuevo Análisis</h2>
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Motor Gemini 1.5 Flash Pro</p>
+                        <h2 className="text-xl font-[1000] tracking-tighter uppercase italic leading-none">Análisis</h2>
+                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">Motor Gemini 1.5 PRO</p>
                     </div>
                  </div>
                  
@@ -113,7 +113,7 @@ const VitametrasApp: React.FC = () => {
                     isLoading={false} 
                     currentUser={currentUser} 
                     prediction={prediction} 
-                    history={history} // Pasamos el historial para que la IA aprenda
+                    history={history} 
                  />
               </div>
 
@@ -130,13 +130,14 @@ const VitametrasApp: React.FC = () => {
         </Routes>
       </main>
 
+      {/* MENÚ DE NAVEGACIÓN INFERIOR MEJORADO */}
       {currentUser && (
-        <nav className="fixed bottom-0 left-0 right-0 z-40 px-4 pb-6">
-          <div className="max-w-md mx-auto bg-white/80 backdrop-blur-3xl border border-white/20 p-2 flex justify-around items-center rounded-[2.5rem] shadow-2xl shadow-slate-200">
+        <nav className="fixed bottom-4 left-0 right-0 z-[60] px-4">
+          <div className="max-w-md mx-auto bg-slate-900/95 backdrop-blur-xl border border-white/10 p-2 flex justify-around items-center rounded-3xl shadow-2xl">
             <NavIcon active={location.pathname === '/analyzer'} onClick={() => navigate('/analyzer')} icon={<Home />} label="Hoy" />
             <NavIcon active={location.pathname === '/history'} onClick={() => navigate('/history')} icon={<Activity />} label="Log" />
             <NavIcon active={location.pathname === '/reports'} onClick={() => navigate('/reports')} icon={<PieChart />} label="Data" />
-            <NavIcon active={location.pathname === '/plans'} onClick={() => navigate('/plans')} icon={<Star />} label="PRO" />
+            <NavIcon active={location.pathname === '/plans'} onClick={() => navigate('/plans'} icon={<Star />} label="PRO" />
             <NavIcon active={location.pathname === '/profile'} onClick={() => navigate('/profile')} icon={<User />} label="Perfil" />
           </div>
         </nav>
@@ -144,17 +145,21 @@ const VitametrasApp: React.FC = () => {
       
       {isLoginOpen && <LoginModal onClose={() => setIsLoginOpen(false)} onLoginSuccess={() => { setIsLoginOpen(false); navigate('/analyzer'); }} />}
       {snackbar.show && <Snackbar message={snackbar.msg} type={snackbar.type} snackbarKey={Date.now()} duration={4000} />}
-      <div className="fixed bottom-28 right-6 z-50 shadow-2xl"><ChatBot currentUser={currentUser || ({} as any)} /></div>
+      
+      {/* CHATBOT POSICIONADO PARA NO ESTORBAR */}
+      <div className="fixed bottom-24 right-4 z-50">
+        <ChatBot currentUser={currentUser || ({} as any)} />
+      </div>
     </div>
   );
 };
 
 const NavIcon = ({ active, onClick, icon, label }: any) => (
-  <button onClick={onClick} className="flex flex-col items-center justify-center gap-1 flex-1 transition-all active:scale-75">
-    <div className={`p-3 rounded-2xl transition-all duration-500 ${active ? 'bg-blue-600 text-white shadow-xl shadow-blue-200' : 'text-slate-300'}`}>
-      {React.cloneElement(icon, { size: 20, strokeWidth: active ? 3 : 2 })}
+  <button onClick={onClick} className="flex flex-col items-center justify-center gap-1 flex-1 transition-all active:scale-90">
+    <div className={`p-2.5 rounded-xl transition-all duration-300 ${active ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/50' : 'text-slate-500'}`}>
+      {React.cloneElement(icon, { size: 18, strokeWidth: active ? 3 : 2 })}
     </div>
-    <span className={`text-[8px] font-black uppercase tracking-widest ${active ? 'text-blue-600' : 'text-slate-300'}`}>{label}</span>
+    <span className={`text-[7px] font-black uppercase tracking-widest ${active ? 'text-white' : 'text-slate-500'}`}>{label}</span>
   </button>
 );
 
