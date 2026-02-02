@@ -70,7 +70,8 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({ currentUser, history }) 
             <h2 className="text-6xl font-[1000] tracking-tighter italic">
               {isPro ? `${clinicalMetrics.tir}%` : '---'}
             </h2>
-            <p className="text-slate-400 text-xs font-bold">Objetivo Clínico: >70%</p>
+            {/* CORRECCIÓN AQUÍ: Usamos llaves para envolver el texto con el símbolo mayor que */}
+            <p className="text-slate-400 text-xs font-bold">{"Objetivo Clínico: >70%"}</p>
           </div>
           <div className="w-24 h-24 rounded-full border-[10px] border-blue-600/20 border-t-blue-500 flex items-center justify-center relative">
               <Activity className="text-blue-500 animate-pulse" />
