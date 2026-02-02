@@ -1,0 +1,7 @@
+{
+  "name": "VitaMetra - Control Inteligente de Diabetes",
+  "description": "VitaMetra: Software avanzado para diabetes tipo 1 y 2. Gestión glucémica con IA, cálculo de dosis de insulina (I:C), importación masiva de datos (IIG) y estimación de HbA1c.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}

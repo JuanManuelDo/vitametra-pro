@@ -1,0 +1,44 @@
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Función auxiliar para verificar si es Super Admin vía Token
+    function isSuperAdmin() {
+      return request.auth != null && request.auth.token.admin == true;
+    }
+
+    // Colección de Usuarios
+    match /users/{userId} {
+      // Un usuario solo puede leer/escribir su propio documento
+      // El Super Admin puede leer todos para exportación de marketing
+      allow read: if request.auth != null && (request.auth.uid == userId || isSuperAdmin());
+      
+      // Bloqueo: Nadie puede cambiar su propio rol o plan manualmente
+      allow update: if request.auth != null && request.auth.uid == userId 
+                    && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'subscription_tier']);
+      
+      // Solo el Super Admin puede crear administradores institucionales
+      allow create: if isSuperAdmin();
+    }
+
+    // Colección de Auditoría (Crítica para Seguridad)
+    match /logs_auditoria/{logId} {
+      // Regla de Oro: Solo creación. Prohibido leer, borrar o editar (Append-only)
+      allow create: if request.auth != null;
+      allow read, update, delete: if false;
+    }
+
+    // Historial Médico (Datos Sensibles)
+    match /ingestas/{entryId} {
+      allow read: if request.auth != null && (resource.data.userId == request.auth.uid || isSuperAdmin());
+      allow write: if request.auth != null && (request.resource.data.userId == request.auth.uid);
+    }
+    
+    // Instituciones B2B
+    match /institutions/{instId} {
+      allow read: if request.auth != null;
+      allow write: if isSuperAdmin();
+    }
+  }
+}

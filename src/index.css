@@ -1,0 +1,92 @@
+@import "tailwindcss";
+
+@theme {
+  /* Paleta VitaMetra PRO 2026 */
+  --color-metra-dark: #0F172A;
+  --color-metra-blue: #2563EB;
+  --color-metra-green: #22C55E;
+  --color-metra-red: #EF4444;
+  --color-metra-amber: #F59E0B;
+  --color-metra-slate: #F8FAFC;
+  
+  /* Sombras "Soft Focus" de las imágenes */
+  --shadow-metra: 0 20px 50px rgba(0, 0, 0, 0.05);
+  --shadow-button: 0 10px 25px rgba(34, 197, 94, 0.2);
+}
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    scroll-behavior: smooth;
+    /* Evita el rebote de scroll en iOS que a veces rompe el diseño */
+    overscroll-behavior-y: none;
+  }
+  
+  body {
+    @apply bg-metra-slate text-metra-dark;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11", "ss01";
+    /* Aseguramos que la tipografía se vea "Black" como en tus fotos */
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+}
+
+@layer components {
+  /* TARJETA MAESTRA (Imagen 3, 4, 5) */
+  .metra-card {
+    @apply bg-white rounded-[2.5rem] border border-slate-50 shadow-[var(--shadow-metra)] p-6 transition-all duration-300;
+  }
+
+  /* BOTÓN "CONFIRMAR" VERDE (Imagen 5 y 6) */
+  .btn-metra-confirm {
+    @apply w-full bg-metra-green text-white font-[900] text-xl py-5 rounded-[2rem] 
+           shadow-[var(--shadow-button)] transition-all active:scale-95 
+           flex items-center justify-center gap-3 hover:brightness-105;
+  }
+
+  /* INPUT GIGANTE DE GLUCEMIA (Imagen 6) */
+  .input-metra-massive {
+    @apply w-full bg-slate-50 border-2 border-transparent rounded-[2rem] p-6 text-center 
+           text-5xl font-black text-metra-dark focus:border-metra-blue 
+           focus:bg-white transition-all outline-none placeholder:text-slate-200;
+  }
+
+  /* BADGES CLÍNICOS (Impacto Glucémico) */
+  .metra-badge {
+    @apply px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-[0.15em] border;
+  }
+
+  /* SISTEMA DE "GLASSMORPHISM" PARA EL MENU (Imagen 1 y 2) */
+  .metra-glass {
+    @apply bg-white/80 backdrop-blur-xl border-t border-white/20;
+  }
+}
+
+/* --- REVISIÓN TÉCNICA DE ICONOS --- */
+/* En lugar de forzar 24px a TODOS, forzamos que sean proporcionales
+   y que no se deformen, pero permitiendo tamaños distintos si se declaran en el componente */
+svg {
+  display: inline-block;
+  vertical-align: middle;
+  flex-shrink: 0;
+  /* El width/height lo controlaremos por clases de Lucide o Tailwind (w-5, h-5, etc) */
+}
+
+/* Animación de entrada suave para todos los Modales/Popups */
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+.animate-metra-slide {
+  animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Scrollbar invisible pero funcional (Mejora estética Imagen 3) */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
