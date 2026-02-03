@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChevronRight, ArrowRight, Sparkles } from 'lucide-react';
+import { ArrowRight, Sparkles, Calculator, Zap, ShieldCheck } from 'lucide-react';
 import Logo from './Logo';
 
 interface HomeTabProps {
@@ -8,8 +8,8 @@ interface HomeTabProps {
 
 const HomeTab: React.FC<HomeTabProps> = ({ onStartClick }) => {
   return (
-    <div className="w-full">
-      {/* SECCIÓN HERO */}
+    <div className="w-full bg-white">
+      {/* SECCIÓN HERO - ESTILO VITAMETRA PRO */}
       <section className="max-w-[1400px] mx-auto px-6 py-20 md:py-32">
         <div className="flex flex-col items-start">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-50 border border-blue-100 mb-8 animate-in fade-in slide-in-from-top-4 duration-1000">
@@ -41,29 +41,61 @@ const HomeTab: React.FC<HomeTabProps> = ({ onStartClick }) => {
         </div>
       </section>
 
-      {/* SECCIÓN DE BENEFICIOS CON LOGO ÁTOMO */}
-      <section className="bg-slate-50/50 py-24 border-y border-slate-100">
-        <div className="max-w-[1400px] mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-12">
-          
-          {[
-            { title: "Análisis Neural", desc: "IA que entiende tus comidas tal como las dices.", color: "text-[#007AFF]" },
-            { title: "Predicción HbA1c", desc: "Algoritmos que proyectan tu hemoglobina a futuro.", color: "text-[#34C759]" },
-            { title: "Grado Médico", desc: "Basado en estándares internacionales de salud.", color: "text-slate-900" }
-          ].map((item, i) => (
-            <div key={i} className="flex flex-col items-start group">
-              <div className={`mb-6 transition-transform group-hover:rotate-12 duration-500 ${item.color}`}>
-                {/* Aquí usamos el componente Logo pero solo el icono si quieres, o el logo completo */}
-                <div className="w-12 h-12">
-                   <Logo className="scale-75 origin-left" />
-                </div>
+      {/* SECCIÓN DE BENEFICIOS - ESTILO APPLE HEALTH (Imagen Deseada) */}
+      <section className="bg-[#FBFBFD] py-24 border-t border-slate-100">
+        <div className="max-w-[1200px] mx-auto px-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            
+            {/* Tarjeta 1: Conteo Natural */}
+            <div className="bg-white rounded-[3rem] p-10 flex flex-col items-center text-center shadow-sm border border-slate-50 transition-all hover:shadow-xl hover:-translate-y-2 duration-500 group">
+              <div className="w-24 h-24 bg-[#F2F7FF] rounded-[2rem] flex items-center justify-center mb-8 group-hover:scale-110 transition-transform duration-500">
+                <Calculator size={40} className="text-[#007AFF]" strokeWidth={1.5} />
               </div>
-              <h3 className="text-xl font-black uppercase italic tracking-tighter mb-2">{item.title}</h3>
-              <p className="text-slate-400 font-bold text-sm leading-relaxed">{item.desc}</p>
+              <h3 className="text-2xl font-[900] text-slate-900 mb-4 tracking-tight uppercase italic">
+                Conteo Natural
+              </h3>
+              <p className="text-slate-500 font-bold text-sm leading-relaxed">
+                "Media taza de arroz y pollo" se convierte en carbohidratos netos automáticamente.
+              </p>
             </div>
-          ))}
 
+            {/* Tarjeta 2: Proyección HbA1c */}
+            <div className="bg-white rounded-[3rem] p-10 flex flex-col items-center text-center shadow-sm border border-slate-50 transition-all hover:shadow-xl hover:-translate-y-2 duration-500 group">
+              <div className="w-24 h-24 bg-[#F2FFF5] rounded-[2rem] flex items-center justify-center mb-8 group-hover:scale-110 transition-transform duration-500">
+                <Zap size={40} className="text-[#34C759]" strokeWidth={1.5} />
+              </div>
+              <h3 className="text-2xl font-[900] text-slate-900 mb-4 tracking-tight uppercase italic">
+                Proyección HbA1c
+              </h3>
+              <p className="text-slate-500 font-bold text-sm leading-relaxed">
+                Mira cómo cada plato afecta tu promedio de tres meses antes del examen real.
+              </p>
+            </div>
+
+            {/* Tarjeta 3: Grado Clínico */}
+            <div className="bg-white rounded-[3rem] p-10 flex flex-col items-center text-center shadow-sm border border-slate-50 transition-all hover:shadow-xl hover:-translate-y-2 duration-500 group">
+              <div className="w-24 h-24 bg-[#FFF9F2] rounded-[2rem] flex items-center justify-center mb-8 group-hover:scale-110 transition-transform duration-500">
+                <ShieldCheck size={40} className="text-[#FF9500]" strokeWidth={1.5} />
+              </div>
+              <h3 className="text-2xl font-[900] text-slate-900 mb-4 tracking-tight uppercase italic">
+                Grado Clínico
+              </h3>
+              <p className="text-slate-500 font-bold text-sm leading-relaxed">
+                Basado en estándares ADA 2026 para máxima seguridad en el control de glucosa.
+              </p>
+            </div>
+
+          </div>
         </div>
       </section>
+
+      {/* FOOTER DE MARCA CON LOGO ÁTOMO */}
+      <footer className="py-20 flex flex-col items-center justify-center bg-white">
+        <Logo className="scale-125 mb-6" />
+        <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.5em]">
+          The Future of Metabolic Health
+        </p>
+      </footer>
     </div>
   );
 };
