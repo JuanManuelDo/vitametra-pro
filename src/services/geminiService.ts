@@ -1,44 +1,13 @@
-import { GoogleGenerativeAI, SchemaType } from '@google/generative-ai';
 import type { AnalysisResult, ImportedGlucoseEntry, HistoryEntry, ClinicalReportConfig, UserData } from '../types';
 
-// FUERZA LA VERSIÓN V1 PARA EVITAR EL 404 DE V1BETA
 const API_KEY = "AIzaSyCvKs5Il5CbmxoobL7qWwde_ReYAyet5ws";
-const genAI = new GoogleGenerativeAI(API_KEY);
+// Forzamos manualmente la versión V1 (Estable) para saltarnos el error 404 del SDK
+const GEMINI_URL = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
 
-// CONFIGURACIÓN DE MODELO ESTABLE
-const MODEL_NAME = "gemini-1.5-flash";
-
-const NUTRITION_SCHEMA = {
-  type: SchemaType.OBJECT,
-  properties: {
-    items: {
-      type: SchemaType.ARRAY,
-      items: {
-        type: SchemaType.OBJECT,
-        properties: {
-          food: { type: SchemaType.STRING },
-          totalCarbs: { type: SchemaType.NUMBER },
-          category: { type: SchemaType.STRING, enum: ['base', 'complemento', 'fibra_proteina'] },
-          fiber: { type: SchemaType.NUMBER },
-          protein: { type: SchemaType.NUMBER },
-          fat: { type: SchemaType.NUMBER },
-          calories: { type: SchemaType.NUMBER }
-        },
-        required: ['food', 'totalCarbs', 'category', 'fiber', 'protein', 'fat', 'calories']
-      }
-    },
-    totalCarbs: { type: SchemaType.NUMBER },
-    totalFiber: { type: SchemaType.NUMBER },
-    netCarbs: { type: SchemaType.NUMBER },
-    glycemicIndex: { type: SchemaType.STRING, enum: ['alto', 'medio', 'bajo'] },
-    glycemicLoad: { type: SchemaType.NUMBER },
-    glucoseRiseEstimate: { type: SchemaType.NUMBER },
-    optimizationTip: { type: SchemaType.STRING },
-    metabolicExplanation: { type: SchemaType.STRING }
-  },
-  required: ['items', 'totalCarbs', 'totalFiber', 'netCarbs', 'glycemicIndex', 'glycemicLoad', 'glucoseRiseEstimate', 'optimizationTip', 'metabolicExplanation']
-};
-
+/**
+ * MOTOR DE INFERENCIA METABÓLICA (V1 ESTABLE)
+ * Peter Thiel Style: Simplicidad extrema para una robustez total.
+ */
 export const analyzeFoodVision = async (
   content: string, 
   isImage: boolean = false, 
@@ -47,61 +16,69 @@ export const analyzeFoodVision = async (
   history: HistoryEntry[] = []
 ): Promise<AnalysisResult> => {
   
-  // Especificamos la versión v1 explícitamente si el SDK lo permite, 
-  // si no, el nombre del modelo sin prefijos suele disparar la ruta correcta.
-  const model = genAI.getGenerativeModel({ 
-    model: MODEL_NAME,
-  });
-
   const recentPatterns = history
     .filter(h => h.isCalibrated && (h.glucoseImpact || 0) > 50)
     .slice(0, 3)
     .map(h => `- ${h.foodName}: +${h.glucoseImpact}mg/dL`)
     .join('\n');
 
-  const systemInstruction = `Eres Vitametra Clinical AI. 
-    Analiza la comida y responde EXCLUSIVAMENTE con el JSON definido.
+  const systemPrompt = `Actúa como Vitametra Clinical AI. Analiza la comida y responde SOLO con un objeto JSON.
     Contexto: Chile. Paciente: ${userContext?.subscription_tier || 'BASE'}.
-    Patrones: ${recentPatterns || 'Normal'}`;
+    Patrones: ${recentPatterns || 'Normal'}.
+    
+    JSON format:
+    {
+      "items": [{"food": "nombre", "totalCarbs": 0, "category": "base", "fiber": 0, "protein": 0, "fat": 0, "calories": 0}],
+      "totalCarbs": 0,
+      "totalFiber": 0,
+      "netCarbs": 0,
+      "glycemicIndex": "bajo",
+      "glycemicLoad": 0,
+      "glucoseRiseEstimate": 0,
+      "optimizationTip": "texto",
+      "metabolicExplanation": "texto"
+    }`;
+
+  const userPrompt = isImage 
+    ? "Analiza esta imagen de comida y entrega los valores clínicos en el formato JSON solicitado." 
+    : `Analiza este plato: "${content}". Entrega los valores clínicos en el formato JSON solicitado.`;
+
+  const requestBody = {
+    contents: [{
+      parts: [
+        { text: `${systemPrompt}\n\n${userPrompt}` },
+        ...(isImage ? [{ inlineData: { mimeType, data: content } }] : [])
+      ]
+    }],
+    generationConfig: {
+      temperature: 0.1,
+      topP: 0.95,
+      responseMimeType: "application/json"
+    }
+  };
 
   try {
-    const prompt = isImage 
-      ? "Analiza la imagen y devuelve el JSON nutricional." 
-      : `Analiza esta comida: "${content}". Calcula carbohidratos netos y respuesta glucémica estimada.`;
-
-    const parts = isImage 
-      ? [{ text: prompt }, { inlineData: { data: content, mimeType } }]
-      : [{ text: prompt }];
-
-    const result = await model.generateContent({
-      contents: [{ role: 'user', parts }],
-      systemInstruction: systemInstruction,
-      generationConfig: {
-        responseMimeType: "application/json",
-        responseSchema: NUTRITION_SCHEMA,
-      }
+    const response = await fetch(GEMINI_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(requestBody)
     });
 
-    const response = result.response;
-    const text = response.text();
-    
-    // Limpieza de seguridad por si la IA añade markdown
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    const cleanJson = jsonMatch ? jsonMatch[0] : text;
-    
-    return JSON.parse(cleanJson) as AnalysisResult;
-
-  } catch (error: any) {
-    console.error("DEBUG - Fallo en Bio-Core:", error.message);
-    
-    // SEGUNDO INTENTO (FALLBACK) - MODO COMPATIBILIDAD 10X
-    if (!isImage) {
-        const simpleModel = genAI.getGenerativeModel({ model: MODEL_NAME });
-        const fastResult = await simpleModel.generateContent(`Genera un JSON nutricional para: ${content}. Solo el JSON, sin texto.`);
-        return JSON.parse(fastResult.response.text().match(/\{[\s\S]*\}/)?.[0] || "{}");
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error?.message || "Fallo en Bio-Core");
     }
 
-    throw new Error("Sincronización interrumpida. Reintenta en 3 segundos.");
+    const data = await response.json();
+    const rawResponse = data.candidates[0].content.parts[0].text;
+    
+    // Limpiamos la respuesta por si la IA incluye bloques de código markdown
+    const jsonStr = rawResponse.match(/\{[\s\S]*\}/)?.[0] || rawResponse;
+    return JSON.parse(jsonStr) as AnalysisResult;
+
+  } catch (error: any) {
+    console.error("METRACORE CRITICAL ERROR:", error.message);
+    throw new Error("El motor Bio-Core está sincronizando. Por favor intenta describiendo la comida en texto.");
   }
 };
 
@@ -109,4 +86,26 @@ export const analyzeFoodText = async (text: string, userContext?: UserData, hist
   return analyzeFoodVision(text, false, '', userContext, history);
 };
 
-// ... (Las demás funciones se mantienen igual)
+export const generateAIClinicalReport = async (history: HistoryEntry[], config: ClinicalReportConfig): Promise<string> => {
+  const prompt = `Genera un reporte clínico: ${JSON.stringify(history.slice(0, 10))}. Tipo: ${config.diabetesType}.`;
+  const response = await fetch(GEMINI_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+  });
+  const data = await response.json();
+  return data.candidates[0].content.parts[0].text;
+};
+
+export const parseGlucometerData = async ({ content, isBase64, mimeType }: any): Promise<ImportedGlucoseEntry[]> => {
+  const prompt = "Extrae registros de glucosa JSON: array de { date (ISO), value (mg/dL) }.";
+  const parts = isBase64 ? [{ text: prompt }, { inlineData: { data: content, mimeType } }] : [{ text: prompt + content }];
+  
+  const response = await fetch(GEMINI_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ contents: [{ parts }], generationConfig: { responseMimeType: "application/json" } })
+  });
+  const data = await response.json();
+  return JSON.parse(data.candidates[0].content.parts[0].text);
+};
