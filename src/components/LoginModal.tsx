@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Mail, Lock, Loader2, AlertCircle, ArrowRight, ShieldCheck, Zap } from 'lucide-react';
+import { X, Mail, Lock, Loader2, AlertCircle, ArrowRight, ShieldCheck, Zap, ChevronRight } from 'lucide-react';
 import { apiService } from '../services/apiService';
 
 interface LoginModalProps {
@@ -47,12 +47,12 @@ const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLoginSuccess }) => {
   return (
     <div className="fixed inset-0 z-[1000] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
       {/* Overlay con desenfoque de cristal */}
-      <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md" onClick={onClose} />
+      <div className="absolute inset-0 bg-[#001D3D]/60 backdrop-blur-md" onClick={onClose} />
       
-      <div className="relative bg-white w-full max-w-[480px] rounded-t-[3rem] sm:rounded-[3.5rem] shadow-2xl overflow-hidden animate-metra-slide sm:animate-in sm:zoom-in-95 duration-500">
+      <div className="relative bg-white w-full max-w-[480px] rounded-t-[3rem] sm:rounded-[3.5rem] shadow-2xl overflow-hidden animate-metra-slide sm:animate-in sm:zoom-in-95 duration-500 border border-white/20">
         
         {/* Barra de arrastre estética para móvil */}
-        <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mt-4 sm:hidden" />
+        <div className="w-12 h-1.5 bg-slate-100 rounded-full mx-auto mt-4 sm:hidden" />
 
         <button onClick={onClose} className="absolute top-8 right-8 p-2 text-slate-300 hover:text-slate-900 transition-all z-10 bg-slate-50 rounded-full">
           <X size={20} />
@@ -61,12 +61,12 @@ const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLoginSuccess }) => {
         <div className="p-10 sm:p-14">
           {/* Header PRO */}
           <div className="mb-12 text-center sm:text-left">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-50 text-blue-600 text-[10px] font-[900] uppercase tracking-[0.2em] mb-6">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-50 text-[#007AFF] text-[10px] font-[900] uppercase tracking-[0.2em] mb-6 border border-blue-100/50">
               <Zap size={14} fill="currentColor" /> Acceso Biométrico
             </div>
             <h2 className="text-5xl font-[1000] text-slate-900 tracking-tighter uppercase italic leading-[0.85]">
               {isRegistering ? 'Únete al' : 'Panel de'} <br />
-              <span className="text-metra-blue">Control</span>
+              <span className="text-[#007AFF]">Control</span>
             </h2>
             <p className="mt-4 text-slate-400 text-sm font-bold tracking-tight">
               {isRegistering ? 'Tu nueva vida metabólica comienza hoy.' : 'Sincroniza tu nutrición con IA de precisión.'}
@@ -89,9 +89,9 @@ const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLoginSuccess }) => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="EMAIL PROFESIONAL"
-                className="w-full bg-slate-50 border-2 border-transparent focus:border-blue-500/20 focus:bg-white rounded-[1.5rem] py-6 px-8 text-xs font-black uppercase tracking-widest text-slate-900 outline-none transition-all placeholder:text-slate-300"
+                className="w-full bg-slate-50 border-2 border-transparent focus:border-[#007AFF]/20 focus:bg-white rounded-[1.5rem] py-6 px-8 text-xs font-black uppercase tracking-widest text-slate-900 outline-none transition-all placeholder:text-slate-300"
               />
-              <Mail className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-200 group-focus-within:text-metra-blue transition-colors" size={20} />
+              <Mail className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-200 group-focus-within:text-[#007AFF] transition-colors" size={20} />
             </div>
 
             <div className="group relative">
@@ -101,24 +101,27 @@ const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLoginSuccess }) => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="CONTRASEÑA SEGURA"
-                className="w-full bg-slate-50 border-2 border-transparent focus:border-blue-500/20 focus:bg-white rounded-[1.5rem] py-6 px-8 text-xs font-black uppercase tracking-widest text-slate-900 outline-none transition-all placeholder:text-slate-300"
+                className="w-full bg-slate-50 border-2 border-transparent focus:border-[#007AFF]/20 focus:bg-white rounded-[1.5rem] py-6 px-8 text-xs font-black uppercase tracking-widest text-slate-900 outline-none transition-all placeholder:text-slate-300"
               />
-              <Lock className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-200 group-focus-within:text-metra-blue transition-colors" size={20} />
+              <Lock className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-200 group-focus-within:text-[#007AFF] transition-colors" size={20} />
             </div>
 
+            {/* BOTÓN CORREGIDO: COLOR AZUL PROFUNDO CON LETRAS CLARAS */}
             <button
               type="submit"
               disabled={isLoading}
-              className="btn-metra-confirm mt-4 !rounded-[1.5rem] !bg-slate-900 hover:!bg-metra-blue transition-all duration-500"
+              className="w-full bg-[#001D3D] hover:bg-[#003566] text-white py-6 rounded-[1.5rem] font-[900] text-sm uppercase tracking-[0.2em] shadow-xl shadow-blue-900/20 transition-all active:scale-95 flex items-center justify-center gap-3 border border-white/10 mt-6"
             >
               {isLoading ? (
                 <Loader2 className="animate-spin" size={24} />
               ) : (
                 <>
-                  <span className="tracking-[0.1em]">
+                  <span>
                     {isRegistering ? 'CREAR PERFIL PRO' : 'ENTRAR AL SISTEMA'}
                   </span>
-                  <ArrowRight size={20} strokeWidth={3} />
+                  <div className="bg-[#007AFF] p-1 rounded-lg">
+                    <ChevronRight size={16} strokeWidth={4} />
+                  </div>
                 </>
               )}
             </button>
@@ -135,9 +138,9 @@ const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLoginSuccess }) => {
             >
               <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] group-hover:text-slate-600 transition-all">
                 {isRegistering ? (
-                  <>¿Ya tienes cuenta? <span className="text-metra-blue underline decoration-2 underline-offset-8">Login</span></>
+                  <>¿Ya tienes cuenta? <span className="text-[#007AFF] underline decoration-2 underline-offset-8">Login</span></>
                 ) : (
-                  <>¿Eres nuevo? <span className="text-metra-blue underline decoration-2 underline-offset-8">Regístrate</span></>
+                  <>¿Eres nuevo? <span className="text-[#007AFF] underline decoration-2 underline-offset-8">Regístrate</span></>
                 )}
               </p>
             </button>
@@ -145,7 +148,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLoginSuccess }) => {
 
           <div className="mt-8 flex items-center justify-center gap-3 opacity-30">
             <ShieldCheck size={14} />
-            <span className="text-[9px] font-black uppercase tracking-widest">Encriptación de Grado Médico AES-256</span>
+            <span className="text-[9px] font-black uppercase tracking-widest text-slate-900">Encriptación de Grado Médico AES-256</span>
           </div>
         </div>
       </div>

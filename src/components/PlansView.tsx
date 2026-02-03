@@ -1,5 +1,5 @@
 import React from 'react';
-import { Check, Zap, Star, Shield, Crown, Sparkles } from 'lucide-react';
+import { Check, Zap, Star, Shield, Crown, Sparkles, Globe, ArrowRight } from 'lucide-react';
 
 interface PlansViewProps {
   onSelectPlan: (planId: string) => void;
@@ -11,112 +11,119 @@ export const PlansView: React.FC<PlansViewProps> = ({ onSelectPlan }) => {
       id: 'monthly',
       name: 'Vitametra Starter',
       price: '6.990',
-      period: 'Mes',
-      description: 'Prueba la precisión de la IA.',
-      features: ['30 Análisis IA al mes', 'Reportes básicos', 'IA Predictiva estándar'],
-      icon: <Zap size={24} className="text-blue-500" />,
-      style: 'bg-white border-slate-100',
-      buttonStyle: 'bg-slate-900 text-white',
+      period: 'MES',
+      icon: <Zap size={28} className="text-blue-500" />,
+      style: 'border-blue-100 shadow-blue-100/50',
+      buttonStyle: 'bg-blue-600 text-white hover:bg-blue-700',
+      features: ['30 Análisis IA al mes', 'Reportes básicos', 'IA Predictiva estándar', 'Sin anuncios'],
       popular: false
     },
     {
       id: 'quarterly',
       name: 'Vitametra PRO',
       price: '18.990',
-      period: 'Trimestre',
-      description: 'El estándar de oro para tu salud.',
-      features: [
-        'Análisis IA Ilimitados', 
-        'Insights Metabólicos PRO', 
-        'Sincronización Médica', 
-        'Sin anuncios'
-      ],
-      icon: <Crown size={24} className="text-amber-500" />,
-      style: 'bg-[#0F172A] border-blue-500/30 text-white',
-      buttonStyle: 'bg-metra-blue text-white shadow-blue-500/20',
+      period: 'TRIMESTRE',
+      icon: <Star size={28} className="text-blue-600" />,
+      style: 'border-blue-600 shadow-xl shadow-blue-100',
+      buttonStyle: 'bg-blue-600 text-white hover:bg-blue-700',
+      features: ['Análisis IA Ilimitados', 'Insights Metabólicos PRO', 'Sincronización Médica', 'Prioridad en Servidores'],
       popular: true
+    },
+    {
+      id: 'annual',
+      name: 'Vitametra GLOBAL',
+      price: '69.990',
+      period: 'AÑO',
+      icon: <Globe size={28} className="text-green-500" />,
+      style: 'border-green-200 shadow-green-100/50',
+      buttonStyle: 'border-2 border-green-600 text-green-600 hover:bg-green-600 hover:text-white',
+      features: ['Todo lo de PRO', 'Soporte Prioritario 24/7', 'Funciones Beta Exclusivas', 'Reporte Anual de Salud'],
+      popular: false
     }
   ];
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8 animate-in fade-in slide-in-from-bottom-8 duration-700">
-      {/* HEADER ESTILO IMAGEN 7 */}
-      <div className="text-center mb-12">
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-50 border border-blue-100 mb-6">
+    <div className="w-full max-w-[1400px] mx-auto px-6 py-20 animate-in fade-in duration-700">
+      
+      {/* HEADER TIPO APPLE HEALTH */}
+      <div className="text-center mb-20">
+        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-50 border border-blue-100 mb-8">
           <Sparkles size={14} className="text-blue-600" />
-          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-700">Membresías Vitametra 2026</span>
+          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-700 italic">Membresías Elite 2026</span>
         </div>
-        <h2 className="text-5xl font-[950] text-slate-900 tracking-tighter uppercase italic leading-[0.9]">
-          Desbloquea tu <br/>
-          <span className="text-metra-blue">Máximo Potencial</span>
+        <h2 className="text-6xl md:text-7xl font-[1000] text-slate-900 tracking-tighter uppercase italic leading-none">
+          Elige tu <span className="text-blue-600">Plan</span> <br/>
+          <span className="text-blue-600">Bio-Metra</span>
         </h2>
+        <p className="mt-6 text-slate-400 font-bold tracking-widest uppercase text-xs">
+          Invierte en tu salud con precisión de grado clínico
+        </p>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-6 pb-20">
+      {/* GRID DE 3 PLANES */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pb-20">
         {plans.map((plan) => (
           <div 
             key={plan.id} 
-            className={`relative rounded-[3rem] p-8 border-2 transition-all duration-500 hover:scale-[1.02] ${plan.style} shadow-2xl shadow-slate-200/50`}
+            className={`relative flex flex-col bg-white rounded-[3.5rem] p-10 border-2 transition-all duration-500 hover:scale-[1.03] ${plan.style}`}
           >
             {plan.popular && (
-              <div className="absolute -top-4 right-8 bg-metra-blue text-white px-5 py-2 rounded-full text-[10px] font-[900] uppercase tracking-widest shadow-lg animate-pulse">
-                Más Elegido
+              <div className="absolute -top-5 left-1/2 -translate-x-1/2 bg-blue-600 text-white px-8 py-2 rounded-full flex items-center gap-2 font-black text-[11px] uppercase tracking-widest shadow-xl">
+                <Crown size={16} /> Más Popular
               </div>
             )}
             
-            <div className="mb-10">
-              <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-6 ${plan.popular ? 'bg-white/10' : 'bg-slate-50'}`}>
+            <div className="mb-8 flex justify-center">
+              <div className="p-4 bg-slate-50 rounded-2xl">
                 {plan.icon}
               </div>
+            </div>
+
+            <div className="text-center mb-8">
+              <h3 className="text-2xl font-black italic uppercase tracking-tighter mb-4">
+                Vitametra <span className={plan.id === 'annual' ? 'text-green-600' : 'text-blue-600'}>{plan.name.split(' ')[1]}</span>
+              </h3>
               
-              <h3 className="text-2xl font-black tracking-tight mb-2 uppercase">{plan.name}</h3>
-              <p className={`text-sm font-medium ${plan.popular ? 'text-slate-400' : 'text-slate-500'}`}>
-                {plan.description}
-              </p>
-            </div>
-
-            <div className="mb-10">
-              <div className="flex items-baseline gap-1">
-                <span className="text-5xl font-[1000] tracking-tighter">${plan.price}</span>
-                <span className={`text-sm font-black uppercase opacity-50`}>/ {plan.period}</span>
+              <div className="flex flex-col items-center">
+                <div className="flex items-center gap-1">
+                  <span className="text-5xl font-[1000] tracking-tighter text-slate-900">${plan.price}</span>
+                </div>
+                <p className="text-slate-400 font-bold italic mt-1 uppercase text-xs">/ {plan.period}</p>
+                <p className="text-[9px] font-black text-slate-300 mt-2 tracking-[0.2em]">PESOS CHILENOS (CLP)</p>
               </div>
-              <p className="text-[10px] font-black uppercase tracking-widest opacity-40 mt-1">Pesos Chilenos (CLP)</p>
             </div>
 
-            <ul className="space-y-4 mb-10">
+            <ul className="space-y-4 mb-12 flex-grow">
               {plan.features.map((feature, i) => (
-                <li key={i} className="flex items-center gap-3 text-sm font-bold">
-                  <div className={`p-1 rounded-full ${plan.popular ? 'bg-blue-500/20 text-blue-400' : 'bg-emerald-100 text-emerald-600'}`}>
-                    <Check size={14} strokeWidth={3} />
+                <li key={i} className="flex items-start gap-3 text-sm font-bold text-slate-600 leading-tight">
+                  <div className={`mt-0.5 p-0.5 rounded-full ${plan.id === 'annual' ? 'bg-green-100 text-green-600' : 'bg-blue-50 text-blue-600'}`}>
+                    <Check size={14} strokeWidth={4} />
                   </div>
-                  <span className={plan.popular ? 'text-slate-300' : 'text-slate-600'}>{feature}</span>
+                  <span>{feature}</span>
                 </li>
               ))}
             </ul>
 
             <button 
               onClick={() => onSelectPlan(plan.id)}
-              className={`w-full py-6 rounded-[2rem] font-[900] uppercase tracking-[0.15em] text-xs transition-all active:scale-95 shadow-xl ${plan.buttonStyle}`}
+              className={`w-full py-5 rounded-[2rem] font-[900] uppercase tracking-[0.15em] text-xs transition-all active:scale-95 shadow-lg flex items-center justify-center gap-2 ${plan.buttonStyle}`}
             >
-              {plan.id === 'quarterly' ? 'ACCESO TOTAL PRO' : 'EMPEZAR AHORA'}
+              Empezar Ahora <ArrowRight size={16} />
             </button>
           </div>
         ))}
       </div>
       
-      {/* FOOTER DE CONFIANZA (Imagen 8) */}
-      <div className="metra-card !bg-slate-50 border-none flex flex-col items-center text-center gap-4">
-        <div className="flex -space-x-2">
-            {[1,2,3,4].map(i => (
-                <div key={i} className="w-8 h-8 rounded-full border-2 border-white bg-slate-200" />
-            ))}
-        </div>
-        <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest max-w-[250px]">
-          Únete a +5,000 usuarios optimizando su salud con Vitametra
-        </p>
-        <div className="flex items-center gap-4 pt-2 grayscale opacity-50">
-           <Shield size={20} />
-           <span className="font-black text-[9px] uppercase tracking-widest">Pago Encriptado SSL</span>
+      {/* TRUST FOOTER */}
+      <div className="flex flex-col items-center text-center gap-6 py-10 border-t border-slate-100">
+        <div className="flex items-center gap-4 text-slate-400">
+           <div className="flex items-center gap-2 border-r border-slate-200 pr-4">
+             <Shield size={20} className="text-blue-500" />
+             <span className="font-black text-[10px] uppercase tracking-[0.2em]">Pago Seguro Mercado Pago</span>
+           </div>
+           <div className="flex items-center gap-2">
+             <span className="font-black text-[10px] uppercase tracking-[0.2em]">Encriptación Grado Médico</span>
+           </div>
         </div>
       </div>
     </div>
