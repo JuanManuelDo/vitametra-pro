@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Mail, Lock, Loader2, AlertCircle, ArrowRight, ShieldCheck, Zap, ChevronRight } from 'lucide-react';
+import { X, Mail, Lock, Loader2, AlertCircle, ShieldCheck, Atom, ChevronRight } from 'lucide-react';
 import { apiService } from '../services/apiService';
 
 interface LoginModalProps {
@@ -59,17 +59,17 @@ const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLoginSuccess }) => {
         </button>
 
         <div className="p-10 sm:p-14">
-          {/* Header PRO */}
+          {/* Header PRO con el ÁTOMO */}
           <div className="mb-12 text-center sm:text-left">
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-50 text-[#007AFF] text-[10px] font-[900] uppercase tracking-[0.2em] mb-6 border border-blue-100/50">
-              <Zap size={14} fill="currentColor" /> Acceso Biométrico
+              <Atom size={14} className="animate-[spin_4s_linear_infinite]" /> Sincronización Molecular
             </div>
             <h2 className="text-5xl font-[1000] text-slate-900 tracking-tighter uppercase italic leading-[0.85]">
               {isRegistering ? 'Únete al' : 'Panel de'} <br />
               <span className="text-[#007AFF]">Control</span>
             </h2>
             <p className="mt-4 text-slate-400 text-sm font-bold tracking-tight">
-              {isRegistering ? 'Tu nueva vida metabólica comienza hoy.' : 'Sincroniza tu nutrición con IA de precisión.'}
+              {isRegistering ? 'Inicia tu transformación metabólica hoy.' : 'Accede a la precisión de Vitametra Bio-Core.'}
             </p>
           </div>
 
@@ -89,7 +89,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLoginSuccess }) => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="EMAIL PROFESIONAL"
-                className="w-full bg-slate-50 border-2 border-transparent focus:border-[#007AFF]/20 focus:bg-white rounded-[1.5rem] py-6 px-8 text-xs font-black uppercase tracking-widest text-slate-900 outline-none transition-all placeholder:text-slate-300"
+                className="w-full bg-slate-50 border-2 border-transparent focus:border-[#007AFF]/20 focus:bg-white rounded-[1.5rem] py-6 px-8 text-[11px] font-black uppercase tracking-widest text-slate-900 outline-none transition-all placeholder:text-slate-300"
               />
               <Mail className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-200 group-focus-within:text-[#007AFF] transition-colors" size={20} />
             </div>
@@ -101,12 +101,11 @@ const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLoginSuccess }) => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="CONTRASEÑA SEGURA"
-                className="w-full bg-slate-50 border-2 border-transparent focus:border-[#007AFF]/20 focus:bg-white rounded-[1.5rem] py-6 px-8 text-xs font-black uppercase tracking-widest text-slate-900 outline-none transition-all placeholder:text-slate-300"
+                className="w-full bg-slate-50 border-2 border-transparent focus:border-[#007AFF]/20 focus:bg-white rounded-[1.5rem] py-6 px-8 text-[11px] font-black uppercase tracking-widest text-slate-900 outline-none transition-all placeholder:text-slate-300"
               />
               <Lock className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-200 group-focus-within:text-[#007AFF] transition-colors" size={20} />
             </div>
 
-            {/* BOTÓN CORREGIDO: COLOR AZUL PROFUNDO CON LETRAS CLARAS */}
             <button
               type="submit"
               disabled={isLoading}
@@ -117,7 +116,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLoginSuccess }) => {
               ) : (
                 <>
                   <span>
-                    {isRegistering ? 'CREAR PERFIL PRO' : 'ENTRAR AL SISTEMA'}
+                    {isRegistering ? 'CREAR PERFIL BIO' : 'ENTRAR AL SISTEMA'}
                   </span>
                   <div className="bg-[#007AFF] p-1 rounded-lg">
                     <ChevronRight size={16} strokeWidth={4} />
@@ -147,8 +146,8 @@ const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLoginSuccess }) => {
           </div>
 
           <div className="mt-8 flex items-center justify-center gap-3 opacity-30">
-            <ShieldCheck size={14} />
-            <span className="text-[9px] font-black uppercase tracking-widest text-slate-900">Encriptación de Grado Médico AES-256</span>
+            <Atom size={14} className="text-slate-900" />
+            <span className="text-[9px] font-black uppercase tracking-widest text-slate-900">Bio-Core Security Protocol</span>
           </div>
         </div>
       </div>
