@@ -27,7 +27,6 @@ export const apiService = {
             ia_credits: 3,
             daily_ia_usage: 0,
             createdAt: new Date().toISOString(),
-            // Configuración clínica inicial por defecto
             insulinRatioSchedule: [
                 { startTime: "06:00", ratio: 15 },
                 { startTime: "13:00", ratio: 15 },
@@ -49,17 +48,13 @@ export const apiService = {
         const userSnap = await getDoc(doc(db, "users", userId));
         const userData = userSnap.data() as UserData;
         
-        // Control de cuotas
         const today = new Date().toISOString().split('T')[0];
         if (userData?.subscription_tier !== 'PRO' && (userData?.daily_ia_usage || 0) >= 3) {
             throw new Error("LIMIT_REACHED");
         }
 
         try {
-            // Aquí Gemini analiza el plato. 
-            // Para el aprendizaje, enviamos también el contexto histórico breve
             const result = await analyzeFoodText(imageB64);
-            
             await this.trackIAUsage(userId, userData?.daily_ia_usage || 0, today);
             return result;
         } catch (error) {
@@ -68,18 +63,37 @@ export const apiService = {
         }
     },
 
-    // --- GESTIÓN DE DATOS METABÓLICOS (El Corazón del Negocio) ---
+    // --- GESTIÓN DE DATOS METABÓLICOS ---
     
     /**
-     * Guarda una ingesta capturando el ratio actual. 
-     * Esto permite a la IA saber qué "lógica" se aplicó en ese momento.
+     * FUNCIÓN CRÍTICA: Actualiza cualquier entrada del historial.
+     * Esto soluciona el error de GlucoseCalibrationCard.tsx
      */
+    async updateHistoryEntry(entryId: string, updates: Partial<HistoryEntry>) {
+        try {
+            const docRef = doc(db, "ingestas", entryId);
+            
+            // Limpieza de datos para Firestore (evita undefined)
+            const cleanUpdates = Object.fromEntries(
+                Object.entries(updates).filter(([_, v]) => v !== undefined)
+            );
+
+            await updateDoc(docRef, {
+                ...cleanUpdates,
+                updatedAt: serverTimestamp()
+            });
+            return { success: true };
+        } catch (error) {
+            console.error("Error al actualizar entrada:", error);
+            throw error;
+        }
+    },
+
     async saveHistoryEntry(userId: string, data: Partial<HistoryEntry>) {
         try {
             const userSnap = await getDoc(doc(db, "users", userId));
             const userData = userSnap.data() as UserData;
             
-            // Determinar ratio activo según la hora
             const now = new Date();
             const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
             
@@ -89,13 +103,14 @@ export const apiService = {
             );
 
             const historyRef = collection(db, "ingestas");
+            
             const entryData = {
-                ...data,
                 userId,
-                ratioUsed: activeRatio, // Guardamos el ratio para futuro entrenamiento de la IA
+                ratioUsed: activeRatio,
                 isCalibrated: false,
-                createdAt: serverTimestamp(),
-                date: new Date().toISOString()
+                date: new Date().toISOString(),
+                ...data,
+                createdAt: serverTimestamp()
             };
 
             const docRef = await addDoc(historyRef, entryData);
@@ -106,16 +121,13 @@ export const apiService = {
         }
     },
 
-    /**
-     * Calibración Post-Prandial: 
-     * Vincula la glucemia real a las 2h con el análisis previo de la IA.
-     */
     async calibrateEntry(entryId: string, glucosePost2h: number) {
         try {
             const docRef = doc(db, "ingestas", entryId);
             const snap = await getDoc(docRef);
+            if (!snap.exists()) throw new Error("Entry not found");
+            
             const entry = snap.data() as HistoryEntry;
-
             const glucoseImpact = entry.bloodGlucoseValue 
                 ? glucosePost2h - entry.bloodGlucoseValue 
                 : 0;
@@ -134,10 +146,9 @@ export const apiService = {
 
     // --- UTILIDADES ---
     _getRatioForTime(time: string, schedule: InsulinRatioSegment[]): number {
-        if (!schedule || schedule.length === 0) return 15; // Default
-        // Ordenar por hora y buscar el segmento correspondiente
+        if (!schedule || schedule.length === 0) return 15;
         const sorted = [...schedule].sort((a, b) => a.startTime.localeCompare(b.startTime));
-        let activeRatio = sorted[sorted.length - 1].ratio; // Por defecto el último del día anterior
+        let activeRatio = sorted[sorted.length - 1].ratio;
         
         for (const segment of sorted) {
             if (time >= segment.startTime) {
@@ -175,7 +186,7 @@ export const apiService = {
             limit(50)
         );
         return onSnapshot(q, (snapshot) => {
-            callback(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as HistoryEntry)));
+            callback(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any)));
         });
     },
 
