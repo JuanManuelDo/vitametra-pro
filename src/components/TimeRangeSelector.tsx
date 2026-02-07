@@ -1,6 +1,6 @@
 
-import React from 'react';
-import { CalendarDaysIcon } from './Icons';
+import React from 'react'
+import { CalendarDaysIcon } from './ui/Icons'
 
 export type TimeRange = 7 | 14 | 30 | 90;
 

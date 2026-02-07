@@ -1,9 +1,9 @@
 
-import React, { useState, useEffect } from 'react';
-import type { UserData } from '../types';
-import { CheckCircleIcon, SparklesIcon, StarIcon } from './Icons';
-import Spinner from './Spinner';
-import { crearPreferenciaMP } from '../services/firebaseService';
+import React, { useState, useEffect } from 'react'
+import type { UserData } from '../types'
+import { CheckCircleIcon, SparklesIcon, StarIcon } from './ui/Icons'
+import Spinner from './ui/Spinner'
+import { crearPreferenciaMP } from '../services/firebaseService'
 
 // Extender ventana para el SDK de MP inyectado
 declare var MercadoPago: any;

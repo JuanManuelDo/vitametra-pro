@@ -1,5 +1,5 @@
-import React from 'react';
-import { LockClosedIcon } from './Icons';
+import React from 'react'
+import { LockClosedIcon } from './ui/Icons'
 
 interface LockedViewProps {
   title: string;

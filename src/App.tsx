@@ -1,197 +1,200 @@
-import React, { useState, useEffect } from 'react';
-import { Routes, Route, useNavigate, Navigate, useLocation } from 'react-router-dom';
-import { Home, Activity, PieChart, User, Star, Zap, PlusCircle } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { onAuthStateChanged } from 'firebase/auth';
 
-import Header from './components/Header';
-import HomeTab from './components/HomeTab';
-import CarbInputForm from './components/CarbInputForm';
+// --- CONFIGURACIÓN DE IDENTIDAD VITAMETRA ---
+import { APP_CONFIG, UI_MESSAGES } from './constants';
+
+// --- COMPONENTES DE UI NUCLEARES ---
+import Header from './components/ui/Header';
+import Navigation from './components/ui/Navigation';
+import Snackbar from './components/ui/Snackbar';
+import LockedView from './components/LockedView';
+
+// --- SISTEMA DE MODALES E INTERACCIÓN ---
+import LoginModal from './components/modals/LoginModal';
+import AuthBarrierModal from './components/modals/AuthBarrierModal'; 
+import LimitReachedModal from './components/modals/LimitReachedModal'; 
+import WelcomeModal from './components/WelcomeModal';
+
+// --- VISTAS MAESTRAS (TABS) ---
+import HomeTab from './tabs/HomeTab';
 import HistoryTab from './components/HistoryTab';
 import ProfileTab from './components/ProfileTab';
-import ReportsTab from './components/ReportsTab';
-import LoginModal from './components/LoginModal';
-import Snackbar from './components/Snackbar';
+import RegisterTab from './components/RegisterTab';
+import PlansTab from './components/PlansTab'; 
+import CarbInputForm from './components/CarbInputForm';
+import ResultDisplay from './components/ResultDisplay';
 import ChatBot from './components/ChatBot';
-import { PlansView } from './components/PlansView';
-import { GlucoseCalibrationCard } from './components/GlucoseCalibrationCard';
-import { AnalysisResultView } from './components/AnalysisResultView';
+import InstitutionalAdminTab from './components/InstitutionalAdminTab';
+import SuperAdminTab from './components/SuperAdminTab';
 
+// --- SERVICIOS CORE ---
+import { analyzeFoodText } from './services/geminiService';
 import { apiService } from './services/apiService';
 import { auth } from './services/firebaseService';
-import type { UserData, HistoryEntry, AnalysisResult } from './types';
+import type { AnalysisResult, UserData, VerifiedFood, HistoryEntry, Hba1cEntry } from './types';
 
-// CONFIGURACIÓN DE MERCADO PAGO
-const MP_LINKS = {
-  monthly: "https://mpago.li/TU_LINK_6990",    // Reemplaza con tu link real
-  quarterly: "https://mpago.li/TU_LINK_18990", // Reemplaza con tu link real
-  annual: "https://mpago.li/TU_LINK_69900"      // Reemplaza con tu link real
-};
-
-const VitametrasApp: React.FC = () => {
+const App: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  
+
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [currentUser, setCurrentUser] = useState<UserData | null>(null);
-  const [isLoginOpen, setIsLoginOpen] = useState(false);
-  const [isLoadingAuth, setIsLoadingAuth] = useState(true);
-  const [history, setHistory] = useState<HistoryEntry[]>([]);
-  const [snackbar, setSnackbar] = useState({ show: false, msg: '', type: 'info' as any });
-  const [prediction, setPrediction] = useState<AnalysisResult | null>(null);
-  const [lastFoodName, setLastFoodName] = useState('');
+  const [isInitializing, setIsInitializing] = useState(true);
+  
+  const [modals, setModals] = useState({
+    login: false,
+    authBarrier: false,
+    limit: false,
+    chat: false
+  });
+
+  const [analysis, setAnalysis] = useState({
+    input: '',
+    isLoading: false,
+    result: null as AnalysisResult | null,
+    error: null as string | null,
+    dailyLeft: 3
+  });
+
+  const [dataStreams, setDataStreams] = useState({
+    history: [] as HistoryEntry[],
+    hba1c: [] as Hba1cEntry[],
+    lastDeleted: null as HistoryEntry | null
+  });
+
+  const [snackbar, setSnackbar] = useState({ message: '', key: 0 });
+
+  const notify = (msg: string) => setSnackbar({ message: msg, key: Date.now() });
+
+  const initializeSession = useCallback((userData: UserData) => {
+    setIsLoggedIn(true);
+    setCurrentUser(userData);
+    if (location.pathname === '/') {
+        if (userData.email === 'admin@vitametra.com') navigate('/founder');
+        else if (userData.role === 'ADMIN_INSTITUCIONAL') navigate('/institution');
+        else navigate('/dashboard');
+    }
+  }, [location.pathname, navigate]);
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (user) => {
+    const unsub = onAuthStateChanged(auth, async (user) => {
       if (user) {
-        apiService.subscribeToUserProfile(user.uid, (profile) => {
-          setCurrentUser(profile);
-          setIsLoadingAuth(false);
-        });
+        try {
+          const profile = await apiService.getUserProfile(user.uid);
+          if (profile) initializeSession(profile);
+        } catch (e) { console.error("Error profile:", e); }
       } else {
+        setIsLoggedIn(false);
         setCurrentUser(null);
-        setIsLoadingAuth(false);
-        if (location.pathname !== '/') navigate('/');
       }
+      setIsInitializing(false);
     });
     return () => unsub();
-  }, [navigate, location.pathname]);
+  }, [initializeSession]);
 
   useEffect(() => {
-    if (currentUser?.id) {
-      const unsubHistory = apiService.subscribeToHistory(currentUser.id, setHistory);
-      return () => unsubHistory();
+    if (isLoggedIn && currentUser) {
+      const unsubH = apiService.subscribeToHistory(currentUser.id, (h) => 
+        setDataStreams(prev => ({ ...prev, history: h })));
+      const unsubHb = apiService.subscribeToHba1cHistory(currentUser.id, (hb) => 
+        setDataStreams(prev => ({ ...prev, hba1c: hb })));
+      return () => { unsubH(); unsubHb(); };
     }
-  }, [currentUser?.id]);
+  }, [isLoggedIn, currentUser]);
 
-  const handleAnalysisSuccess = (result: AnalysisResult) => {
-    setPrediction(result);
-    setLastFoodName(result.items?.[0]?.food || "Nueva comida");
-    setSnackbar({ show: true, msg: 'Análisis metabólico inteligente listo', type: 'success' });
+  const handleAnalyze = async () => {
+    if (!analysis.input) return;
+    if (!currentUser) { setModals(m => ({ ...m, authBarrier: true })); return; }
+    setAnalysis(prev => ({ ...prev, isLoading: true, result: null, error: null }));
+    try {
+      await apiService.checkAnalysisLimit(currentUser.id);
+      const result = await analyzeFoodText(analysis.input, undefined);
+      setAnalysis(prev => ({ 
+        ...prev, 
+        result, 
+        dailyLeft: currentUser.subscription_tier === 'PRO' ? Infinity : Math.max(0, prev.dailyLeft - 1)
+      }));
+    } catch (err: any) {
+      if (err.message?.includes("límite")) setModals(m => ({ ...m, limit: true }));
+      else setAnalysis(prev => ({ ...prev, error: err.message }));
+    } finally {
+      setAnalysis(prev => ({ ...prev, isLoading: false }));
+    }
   };
 
-  const handlePlanSelection = (planId: string) => {
-    const url = MP_LINKS[planId as keyof typeof MP_LINKS];
-    if (url) {
-      window.open(url, '_blank');
-      setSnackbar({ show: true, msg: 'Redirigiendo a Mercado Pago...', type: 'info' });
-    }
-  };
-
-  if (isLoadingAuth) return (
-    <div className="min-h-screen bg-white flex flex-col items-center justify-center">
-      <div className="relative">
-        <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center animate-pulse shadow-2xl shadow-blue-200">
-          <Zap className="text-white" size={32} fill="white" />
-        </div>
-      </div>
-      <p className="text-[10px] font-[900] text-slate-400 uppercase tracking-[0.5em] mt-10 italic">Vitametra Bio-Core</p>
-    </div>
-  );
+  if (isInitializing) return <div className="min-h-screen bg-[#F2F2F7] flex items-center justify-center animate-pulse" />;
 
   return (
-    <div className="min-h-screen w-full bg-white font-sans antialiased text-slate-900 flex flex-col">
+    <div className="min-h-screen bg-[#F2F2F7]">
+      {isLoggedIn && <WelcomeModal />}
+
       <Header 
-        isLoggedIn={!!currentUser} 
-        currentUser={currentUser}
-        onLoginClick={() => setIsLoginOpen(true)}
-        onLogoutClick={() => apiService.logout()}
+        isLoggedIn={isLoggedIn} 
+        onLoginClick={() => setModals(m => ({ ...m, login: true }))} 
+        onLogoutClick={() => { apiService.logout(); setIsLoggedIn(false); }} 
+        currentUser={currentUser} 
       />
+      
+      <main className={`container mx-auto px-4 ${location.pathname === '/' ? 'pt-0' : 'pt-24'} pb-32`}>
+        <Routes>
+          <Route path="/" element={
+            <HomeTab 
+              currentUser={currentUser || ({} as UserData)} 
+              history={dataStreams.history} 
+              hba1cHistory={dataStreams.hba1c} 
+              onSaveHba1c={(e) => apiService.saveHba1cEntry({...e, id: `hba1c-${Date.now()}`, userId: currentUser?.id || ''})} 
+              onAccessModuleClick={() => navigate('/analyzer')} 
+              onGoToProfileClick={() => navigate('/plans')} 
+              onOpenChatbot={() => setModals(m => ({ ...m, chat: true }))} 
+              dailyAnalysisLeft={analysis.dailyLeft} 
+              onStartClick={() => setModals(m => ({ ...m, login: true }))} 
+            />
+          }/>
 
-      <main className="flex-grow w-full pt-28 pb-48">
-        <div className="w-full h-full px-6 md:px-12 lg:px-20"> 
-          <Routes>
-            <Route path="/" element={!currentUser ? <HomeTab onStartClick={() => setIsLoginOpen(true)} /> : <Navigate to="/analyzer" />} />
-            
-            <Route path="/analyzer" element={currentUser ? (
-              <div className="grid grid-cols-1 xl:grid-cols-2 gap-12 items-start w-full">
-                
-                {/* IZQUIERDA: INPUT */}
-                <div className="space-y-8">
-                  {history.filter(e => !e.isCalibrated && e.totalCarbs > 0).slice(0, 1).map(entry => (
-                    <GlucoseCalibrationCard 
-                      key={entry.id} 
-                      entry={entry} 
-                      onCalibrated={() => setSnackbar({ show: true, msg: 'Calibración procesada', type: 'success' })} 
-                    />
-                  ))}
-                  
-                  <div className="bg-white rounded-[3.5rem] p-10 md:p-14 shadow-[0_32px_64px_-15px_rgba(0,0,0,0.08)] border border-slate-50">
-                     <div className="flex items-center gap-6 mb-12">
-                        <div className="p-5 bg-[#007AFF] text-white rounded-[1.5rem] shadow-xl shadow-blue-200">
-                            <PlusCircle size={40} />
-                        </div>
-                        <div>
-                            <h2 className="text-4xl font-[1000] tracking-tighter uppercase italic leading-none">Bio-Scanner</h2>
-                            <p className="text-[11px] font-black text-slate-300 uppercase tracking-[0.2em] mt-2">Neural Analysis Active</p>
-                        </div>
-                     </div>
-                     
-                     <CarbInputForm 
-                        onSubmit={handleAnalysisSuccess} 
-                        isLoading={false} 
-                        currentUser={currentUser} 
-                        prediction={prediction} 
-                        history={history} 
-                     />
-                  </div>
-                </div>
-
-                {/* DERECHA: RESULTADOS */}
-                <div className="w-full">
-                  {prediction ? (
-                    <AnalysisResultView result={prediction} foodName={lastFoodName} />
-                  ) : (
-                    <div className="hidden xl:flex h-[700px] border-2 border-dashed border-slate-100 rounded-[3.5rem] flex-col items-center justify-center text-slate-200 p-20 text-center">
-                        <Activity size={100} className="mb-8 opacity-20" />
-                        <h3 className="text-2xl font-black uppercase tracking-tighter text-slate-300 italic">Esperando Datos...</h3>
-                        <p className="max-w-sm font-bold text-slate-400 text-sm mt-4 leading-relaxed uppercase tracking-widest">
-                           Ingresa alimentos para proyectar el impacto glucémico.
-                        </p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ) : <Navigate to="/" />} />
-            
-            <Route path="/history" element={currentUser ? <HistoryTab currentUser={currentUser} history={history} /> : <Navigate to="/" />} />
-            <Route path="/reports" element={currentUser ? <ReportsTab currentUser={currentUser} history={history} /> : <Navigate to="/" />} />
-            <Route path="/profile" element={currentUser ? <ProfileTab currentUser={currentUser} onUpdateUser={async () => {}} /> : <Navigate to="/" />} />
-            <Route path="/plans" element={currentUser ? <PlansView onSelectPlan={handlePlanSelection} /> : <Navigate to="/" />} />
-            
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </div>
+          <Route path="/dashboard" element={isLoggedIn ? <Navigate to="/" /> : <Navigate to="/" />} />
+          
+          <Route path="/analyzer" element={
+            <div className="max-w-4xl mx-auto pt-10">
+              <h2 className="text-3xl font-[1000] italic uppercase tracking-tighter text-[#007AFF] mb-8 text-center">VITA<span className="text-slate-900">FLOW</span></h2>
+              {!analysis.result ? (
+                <CarbInputForm foodInput={analysis.input} setFoodInput={(val) => setAnalysis(prev => ({ ...prev, input: val }))} onSubmit={handleAnalyze} isLoading={analysis.isLoading} />
+              ) : (
+                <ResultDisplay 
+                  result={analysis.result} 
+                  currentUser={currentUser} 
+                  onLogEntry={() => notify("Guardado.")} 
+                  onLoginRequest={() => setModals(m => ({ ...m, login: true }))} 
+                  onAdjust={() => setAnalysis(prev => ({ ...prev, result: null }))} 
+                  onFoodItemVerified={() => {}} 
+                  verifiedFoods={[]} 
+                  onDeleteItem={() => {}} 
+                />
+              )}
+            </div>
+          } />
+          
+          <Route path="/history" element={isLoggedIn ? <HistoryTab currentUser={currentUser!} history={dataStreams.history} hba1cHistory={dataStreams.hba1c} onDelete={(id) => apiService.deleteHistoryEntry(id)} onUpdate={() => {}} onSaveHba1c={() => {}} onUpdateHba1c={() => {}} onDeleteHba1c={() => {}} onUpdateLayout={() => {}} onNavigateToAnalyzer={() => navigate('/analyzer')} /> : <LockedView title="Historial" message="Inicia sesión." onLoginClick={() => setModals(m => ({ ...m, login: true }))} onRegisterClick={() => navigate('/register')} />} />
+          <Route path="/profile" element={isLoggedIn ? <ProfileTab currentUser={currentUser!} onUpdateUser={(user) => setCurrentUser(user as UserData)} /> : <LockedView title="Perfil" message="Identifícate." onLoginClick={() => setModals(m => ({ ...m, login: true }))} onRegisterClick={() => navigate('/register')} />} />
+          <Route path="/plans" element={<PlansTab currentUser={currentUser} onUpdateUser={(user) => setCurrentUser(user as UserData)} />} />
+          <Route path="/register" element={<RegisterTab onLoginSuccess={initializeSession} />} />
+          <Route path="/institution" element={isLoggedIn && currentUser?.role === 'ADMIN_INSTITUCIONAL' ? <InstitutionalAdminTab currentUser={currentUser} /> : <Navigate to="/" />} />
+          <Route path="/founder" element={isLoggedIn && currentUser?.email === 'admin@vitametra.com' ? <SuperAdminTab /> : <Navigate to="/" />} />
+        </Routes>
       </main>
 
-      {/* DOCK DE NAVEGACIÓN (Apple Style) */}
-      {currentUser && (
-        <nav className="fixed bottom-10 left-0 right-0 z-[60] px-6">
-          <div className="max-w-4xl mx-auto bg-[#001D3D]/95 backdrop-blur-2xl border border-white/10 p-3 flex justify-around items-center rounded-[2.5rem] shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)]">
-            <NavIcon active={location.pathname === '/analyzer'} onClick={() => navigate('/analyzer')} icon={<Home />} label="Bio-Scan" />
-            <NavIcon active={location.pathname === '/history'} onClick={() => navigate('/history')} icon={<Activity />} label="Log" />
-            <NavIcon active={location.pathname === '/reports'} onClick={() => navigate('/reports')} icon={<PieChart />} label="Data" />
-            <NavIcon active={location.pathname === '/plans'} onClick={() => navigate('/plans')} icon={<Star />} label="Pro" />
-            <NavIcon active={location.pathname === '/profile'} onClick={() => navigate('/profile')} icon={<User />} label="Bio" />
-          </div>
-        </nav>
-      )}
+      {isLoggedIn && <Navigation activeTab={location.pathname.substring(1) || 'dashboard'} onTabChange={(tab) => navigate(`/${tab === 'dashboard' ? '' : tab}`)} />}
       
-      {isLoginOpen && <LoginModal onClose={() => setIsLoginOpen(false)} onLoginSuccess={() => { setIsLoginOpen(false); navigate('/analyzer'); }} />}
-      {snackbar.show && <Snackbar message={snackbar.msg} type={snackbar.type} snackbarKey={Date.now()} duration={4000} />}
+      <ChatBot currentUser={currentUser} isOpen={modals.chat} onToggle={() => setModals(m => ({ ...m, chat: !m.chat }))} history={dataStreams.history} />
       
-      <div className="fixed bottom-36 right-8 z-50 transition-all hover:scale-110 active:scale-90">
-        <ChatBot currentUser={currentUser || ({} as any)} />
-      </div>
+      {modals.login && <LoginModal onClose={() => setModals(m => ({ ...m, login: false }))} onLoginSuccess={initializeSession} />}
+      {modals.authBarrier && <AuthBarrierModal onClose={() => setModals(m => ({ ...m, authBarrier: false }))} onRegisterClick={() => navigate('/register')} onLoginClick={() => setModals(m => ({ ...m, login: true }))} />}
+      {modals.limit && <LimitReachedModal onClose={() => setModals(m => ({ ...m, limit: false }))} onUpgradeClick={() => navigate('/plans')} />}
+      
+      <Snackbar message={snackbar.message} snackbarKey={snackbar.key} />
     </div>
   );
 };
 
-const NavIcon = ({ active, onClick, icon, label }: any) => (
-  <button onClick={onClick} className="flex flex-col items-center justify-center gap-1 flex-1 transition-all active:scale-90 group">
-    <div className={`p-3.5 rounded-2xl transition-all duration-300 ${active ? 'bg-[#007AFF] text-white shadow-lg shadow-blue-500/40' : 'text-slate-400 hover:text-white'}`}>
-      {React.cloneElement(icon, { size: 22, strokeWidth: active ? 3 : 2 })}
-    </div>
-    <span className={`text-[9px] font-black uppercase tracking-[0.2em] ${active ? 'text-white' : 'text-slate-500'}`}>{label}</span>
-  </button>
-);
-
-export default VitametrasApp;
+export default App;

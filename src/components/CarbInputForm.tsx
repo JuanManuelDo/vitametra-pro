@@ -1,174 +1,99 @@
 import React, { useState } from 'react';
 import { apiService } from '../services/apiService';
-import { MetraCore } from '../services/metraCore'; // IMPORTANTE: El nuevo cerebro
+import { MetraCore } from '../services/metraCore'; // Corregido: comilla simple única
 import { Zap, Camera, Send, Loader2, Sparkles, BrainCircuit } from 'lucide-react';
 import { type UserData, type AnalysisResult, type HistoryEntry } from '../types';
-import LimitReachedModal from './LimitReachedModal';
-import { useNavigate } from 'react-router-dom';
 
-interface Props {
-  onSubmit: (data: AnalysisResult) => void;
-  isLoading?: boolean;
-  currentUser: UserData | null;
-  history: HistoryEntry[]; // Añadimos el historial como prop para el aprendizaje
+interface CarbInputFormProps {
+  currentUser: UserData;
+  onAnalysisComplete: (result: AnalysisResult, historyEntry: HistoryEntry) => void;
 }
 
-export const CarbInputForm: React.FC<Props> = ({ 
-  currentUser, 
-  onSubmit,
-  history 
-}) => {
-  const navigate = useNavigate();
+const CarbInputForm: React.FC<CarbInputFormProps> = ({ currentUser, onAnalysisComplete }) => {
   const [input, setInput] = useState('');
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [imageB64, setImageB64] = useState<string | null>(null);
-  const [showLimitModal, setShowLimitModal] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
-  const handleProcessAnalysis = async (e: React.FormEvent) => {
+  const handleAnalyze = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input && !imageB64) return;
-    if (!currentUser) return alert("Debes iniciar sesión para usar la IA.");
+    if (!input.trim() || isAnalyzing) return;
 
-    setIsProcessing(true);
+    setIsAnalyzing(true);
     try {
-      let result: AnalysisResult;
-
-      // 1. ANÁLISIS CONTEXTUAL (Texto o Imagen)
-      if (imageB64) {
-        // La visión artificial ahora es contextual
-        result = await apiService.analyzeFoodVision(imageB64, currentUser.id);
-      } else {
-        // USAMOS EL NUEVO METRA-CORE (Inferencia Inteligente)
-        // Esto busca patrones en el 'history' antes de llamar a Gemini
-        result = await MetraCore.processMetabolicInference(
-            input, 
-            history, 
-            currentUser,
-            100 // Glucemia base, el SaveModal la ajustará después con precisión
-        );
-      }
-
-      // 2. PREPARAR ENTRADA PARA EL HISTORIAL
-      const newEntry: Omit<HistoryEntry, 'id'> = {
-        userId: currentUser.id,
-        createdAt: new Date(),
-        date: new Date().toISOString(),
-        mealType: 'almuerzo', // Por defecto, el SaveModal permitirá cambiarlo
-        userInput: input || "Análisis por foto",
-        foodName: result.items?.[0]?.food || input.substring(0, 25) || "Plato detectado",
-        items: result.items || [],
-        totalCarbs: result.totalCarbs,
-        glycemicIndex: result.glycemicIndex || 'medio',
-        isCalibrated: false,
-        recommendedInsulinUnits: result.prediction?.suggestedInsulin || 0
+      // Usamos el servicio MetraCore para el análisis metabólico
+      const result = await MetraCore.analyzeMeal(input, currentUser);
+      
+      // Creamos la entrada para el historial
+      const historyEntry: HistoryEntry = {
+        id: Date.now().toString(),
+        timestamp: new Date().toISOString(),
+        description: input,
+        carbs: result.carbs,
+        insulin: result.suggestedInsulin,
+        type: 'meal'
       };
 
-      // Guardamos el registro preliminar
-      await apiService.saveHistoryEntry(newEntry);
-      
-      // 3. ÉXITO Y FEEDBACK
-      onSubmit(result);
+      onAnalysisComplete(result, historyEntry);
       setInput('');
-      setImageB64(null);
-      
-    } catch (error: any) {
-      if (error.message === "LIMIT_REACHED") {
-        setShowLimitModal(true);
-      } else {
-        console.error("MetraCore Error:", error);
-        alert("La IA está sincronizando tus patrones metabólicos. Reintenta en unos segundos.");
-      }
+    } catch (error) {
+      console.error("Error analizando carbohidratos:", error);
+      alert("La conexión con el Bio-Core falló. Intenta de nuevo.");
     } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => setImageB64(reader.result as string);
-      reader.readAsDataURL(file);
+      setIsAnalyzing(false);
     }
   };
 
   return (
-    <>
-      <div className="bg-white rounded-[3rem] p-8 md:p-10 border border-slate-50 shadow-2xl shadow-blue-900/5 relative overflow-hidden group">
-        {/* EFECTO DE FONDO IA */}
-        <div className="absolute -top-24 -right-24 w-48 h-48 bg-blue-50 rounded-full blur-3xl opacity-50 group-hover:bg-blue-100 transition-colors duration-700" />
-
-        {/* Badge de uso diario */}
-        {currentUser?.subscription_tier !== 'PRO' && (
-          <div className="absolute top-6 right-8 flex items-center gap-2 px-3 py-1 bg-white/80 backdrop-blur-md rounded-full border border-slate-100 shadow-sm">
-            <Sparkles size={10} className="text-blue-500 animate-pulse" />
-            <span className="text-[9px] font-[900] text-slate-400 uppercase tracking-tighter">
-              {currentUser?.daily_ia_usage || 0} de 3 IA Credits
-            </span>
-          </div>
-        )}
-
-        <form onSubmit={handleProcessAnalysis} className="space-y-8 relative z-10">
-          <div className="flex items-center gap-4">
-            <div className="bg-slate-900 p-3 rounded-2xl shadow-xl shadow-slate-200 rotate-3 group-hover:rotate-0 transition-transform">
-              <BrainCircuit size={22} className="text-blue-400" />
-            </div>
-            <div>
-                <h2 className="text-xl font-[1000] text-slate-800 tracking-tighter uppercase italic leading-none">Bio-Analizador</h2>
-                <p className="text-[10px] font-black text-blue-500 uppercase tracking-[0.2em] mt-1">Predictive Intelligence</p>
-            </div>
-          </div>
-
-          <div className="relative">
-            <textarea
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder="Ej: Plato de tallarines con salsa roja y una manzana..."
-                className="w-full h-40 p-8 rounded-[2.5rem] bg-slate-50 border-none focus:ring-4 focus:ring-blue-50 focus:bg-white text-slate-700 font-bold transition-all resize-none placeholder:text-slate-300 shadow-inner text-lg"
-            />
-            {isProcessing && (
-                <div className="absolute inset-0 bg-white/60 backdrop-blur-sm rounded-[2.5rem] flex flex-col items-center justify-center gap-3 animate-in fade-in">
-                    <Loader2 className="animate-spin text-blue-600" size={32} />
-                    <span className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-600">Calculando Bio-Impacto...</span>
-                </div>
-            )}
-          </div>
-
-          <div className="flex flex-col sm:flex-row gap-4">
-            <label className="flex-1 flex items-center justify-center gap-4 p-6 rounded-[2rem] border-2 border-dashed border-slate-100 hover:border-blue-200 hover:bg-blue-50/30 cursor-pointer transition-all group/btn">
-              <div className={`p-3 rounded-xl transition-colors ${imageB64 ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-400 group-hover/btn:bg-blue-100'}`}>
-                <Camera size={20} />
-              </div>
-              <div className="text-left">
-                <p className="text-[10px] font-black text-slate-800 uppercase tracking-widest">
-                  {imageB64 ? "Foto Lista" : "Subir Foto"}
-                </p>
-                <p className="text-[9px] text-slate-400 font-bold uppercase">Vision Engine</p>
-              </div>
-              <input type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
-            </label>
-
-            <button
-              type="submit"
-              disabled={isProcessing || (!input && !imageB64)}
-              className="flex-[1.5] bg-blue-600 hover:bg-blue-700 disabled:bg-slate-100 text-white rounded-[2rem] font-[1000] p-6 flex items-center justify-center gap-4 transition-all shadow-2xl shadow-blue-100 active:scale-95 group/save"
-            >
-              <span className="tracking-widest text-xs uppercase italic">Ejecutar Análisis IA</span>
-              <div className="bg-white/20 p-2 rounded-lg group-hover/save:translate-x-1 transition-transform">
-                <Send size={18} />
-              </div>
-            </button>
-          </div>
-        </form>
+    <div className="bg-white rounded-[2.5rem] p-6 shadow-xl border border-slate-100 animate-in fade-in zoom-in duration-500">
+      <div className="flex items-center gap-3 mb-6">
+        <div className="bg-metra-blue/10 p-3 rounded-2xl text-metra-blue">
+          <BrainCircuit size={24} />
+        </div>
+        <div>
+          <h3 className="text-lg font-[1000] text-metra-dark uppercase italic tracking-tighter">Análisis IA</h3>
+          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Metabolic Input v3.1</p>
+        </div>
       </div>
 
-      {showLimitModal && (
-        <LimitReachedModal 
-          onClose={() => setShowLimitModal(false)} 
-          onUpgradeClick={() => { setShowLimitModal(false); navigate('/plans'); }}
-        />
-      )}
-    </>
+      <form onSubmit={handleAnalyze} className="space-y-4">
+        <div className="relative">
+          <textarea
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="Ej: Dos tacos al pastor con piña y una coca zero..."
+            className="w-full h-32 p-6 bg-slate-50 border-none rounded-[2rem] font-bold text-sm text-metra-dark placeholder:text-slate-300 outline-none focus:ring-4 focus:ring-metra-blue/10 transition-all resize-none"
+          />
+          <button
+            type="button"
+            className="absolute bottom-4 right-4 p-3 bg-white text-slate-400 rounded-xl shadow-sm hover:text-metra-blue transition-colors"
+          >
+            <Camera size={20} />
+          </button>
+        </div>
+
+        <button
+          type="submit"
+          disabled={!input.trim() || isAnalyzing}
+          className="w-full bg-metra-dark text-white p-6 rounded-[2rem] font-black uppercase text-[11px] tracking-[0.2em] shadow-2xl flex items-center justify-center gap-3 active:scale-95 disabled:opacity-30 transition-all"
+        >
+          {isAnalyzing ? (
+            <>
+              <Loader2 className="animate-spin" size={18} />
+              Procesando Bio-Data...
+            </>
+          ) : (
+            <>
+              <Sparkles size={18} className="text-metra-blue" />
+              Calcular Dosis Precisa
+            </>
+          )}
+        </button>
+      </form>
+
+      <div className="mt-6 flex items-center justify-center gap-2 py-3 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+        <Zap size={14} className="text-metra-blue" />
+        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">MetraCore Neural Engine Active</span>
+      </div>
+    </div>
   );
 };
 

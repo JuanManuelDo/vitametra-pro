@@ -1,7 +1,7 @@
 
-import React, { useState, useMemo } from 'react';
-import { FireIcon, TrophyIcon, InformationCircleIcon, XMarkIcon, SparklesIcon, ActivityIcon, RobotIcon } from './Icons';
-import type { UserStreak, HistoryEntry } from '../types';
+import React, { useState, useMemo } from 'react'
+import { FireIcon, TrophyIcon, InformationCircleIcon, XMarkIcon, SparklesIcon, ActivityIcon, RobotIcon } from './ui/Icons'
+import type { UserStreak, HistoryEntry } from '../types'
 
 interface StreakWidgetProps {
     streak: UserStreak | undefined;

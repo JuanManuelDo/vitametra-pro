@@ -59,11 +59,9 @@ export const MetraCore = {
             const baseRatio = user.clinicalConfig?.insulinToCarbRatio || 10;
             
             // 4. CÁLCULO DUAL (Fórmula Maestra Vitametra)
-            // A. Bolus por Carbohidratos (ajustado por historial)
             const effectiveRatio = baseRatio * (1 - historyAdjustment);
             const bolusCarbs = result.totalCarbs / (effectiveRatio || 10);
             
-            // B. Bolus de Corrección (por glucemia actual)
             let bolusCorrection = 0;
             if (currentGlucose > targetGlucose) {
                 bolusCorrection = (currentGlucose - targetGlucose) / ISF;
@@ -89,6 +87,23 @@ export const MetraCore = {
             console.error("MetraCore Critical Failure:", error);
             throw new Error("Fallo en la inferencia. Intenta de nuevo.");
         }
+    },
+
+    /**
+     * FUNCIÓN DE COMPATIBILIDAD (Alias)
+     * Conecta el componente CarbInputForm con el motor de inferencia.
+     */
+    async analyzeMeal(text: string, userData: UserData) {
+        // Llamamos al motor principal pasando un historial vacío por defecto
+        // Si tienes acceso al historial en el componente, pásalo aquí.
+        const result = await this.processMetabolicInference(text, [], userData);
+        
+        // Mapeamos el resultado para que coincida con lo que espera el componente
+        return {
+            carbs: result.prediction?.suggestedCarbs || result.totalCarbs,
+            suggestedInsulin: result.prediction?.suggestedInsulin || 0,
+            ...result
+        };
     },
 
     async logInferencePerformance(input: string, result: any, adj: number, start: number) {

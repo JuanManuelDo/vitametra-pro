@@ -5,6 +5,11 @@
   --color-metra-green: #34C759; /* Verde Salud */
   --color-metra-dark: #1D1D1F; /* Negro Apple */
   --color-metra-slate: #F5F5F7; /* Gris Fondo */
+  
+  /* Añadimos sombras y radios personalizados */
+  --shadow-apple: 0 4px 24px rgba(0, 0, 0, 0.04);
+  --shadow-apple-heavy: 0 10px 40px rgba(0, 0, 0, 0.08);
+  --radius-apple: 20px;
 }
 
 @layer base {
@@ -12,7 +17,7 @@
     width: 100% !important;
     margin: 0 !important;
     padding: 0 !important;
-    background-color: white;
+    background-color: var(--color-metra-slate); /* Cambiado a gris claro para contraste */
   }
 
   body {
@@ -24,5 +29,15 @@
   /* Estilo para los títulos de impacto */
   .hero-text {
     @apply font-[900] tracking-[-0.04em] leading-[1.1];
+  }
+
+  /* Clase para tarjetas estilo Apple Health */
+  .apple-card {
+    @apply bg-white border border-white/40 shadow-[var(--shadow-apple)] rounded-[var(--radius-apple)];
+  }
+
+  /* Botón interactivo */
+  .apple-btn {
+    @apply transition-all duration-200 active:scale-95 disabled:opacity-50 rounded-xl;
   }
 }

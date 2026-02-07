@@ -1,9 +1,9 @@
 
-import React, { useState, useMemo } from 'react';
-import type { UserData, HistoryEntry } from '../types';
-import { CheckCircleIcon, PlusIcon, BloodDropIcon, SyringeIcon, CalendarDaysIcon } from './Icons';
-import { apiService } from '../services/apiService';
-import Spinner from './Spinner';
+import React, { useState, useMemo } from 'react'
+import type { UserData, HistoryEntry } from '../types'
+import { CheckCircleIcon, PlusIcon, BloodDropIcon, SyringeIcon, CalendarDaysIcon } from './ui/Icons'
+import { apiService } from '../services/apiService'
+import Spinner from './ui/Spinner'
 
 interface SimplifiedHomeProps {
     currentUser: UserData;

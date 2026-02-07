@@ -1,13 +1,13 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { apiService } from '../services/apiService';
-import { Sparkles, X, ShieldCheck, Check, CreditCard } from 'lucide-react';
-import Swal from 'sweetalert2';
+import React, { useState, useEffect, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { Sparkles, X, ShieldCheck, Check } from 'lucide-react'
+import Swal from 'sweetalert2'
+import { getFunctions, httpsCallable } from 'firebase/functions'
 
 // Importaciones para el sistema de correos
-import { getWelcomeEmailTemplate } from '../utils/emailTemplates';
-import { db } from '../services/firebaseService'; 
-import { collection, addDoc } from 'firebase/firestore';
+import { getWelcomeEmailTemplate } from '../utils/emailTemplates'
+import { db } from '../services/firebaseService'
+import { collection, addDoc } from 'firebase/firestore'
 
 declare global {
     interface Window {
@@ -21,7 +21,7 @@ const PLANS = [
     { id: 'annual', title: 'Vitalicio Anual', priceCLP: 69900, features: ['Todo PRO', 'Vínculo Médico', 'Dashboard Senior'], color: 'slate' }
 ];
 
-const PlansTab: React.FC<{ currentUser: any, onUpdateUser?: () => void }> = ({ currentUser, onUpdateUser }) => {
+const PlansTab: React.FC<{ currentUser: any, onUpdateUser?: (user: any) => void }> = ({ currentUser, onUpdateUser }) => {
     const navigate = useNavigate();
     const [selectedPlan, setSelectedPlan] = useState<any>(null);
     const [isProcessing, setIsProcessing] = useState(false);
@@ -31,10 +31,11 @@ const PlansTab: React.FC<{ currentUser: any, onUpdateUser?: () => void }> = ({ c
         if (!selectedPlan || !window.MercadoPago) return;
 
         const initBrick = async () => {
+            // Limpiar contenedor antes de iniciar
             const container = document.getElementById('paymentBrick_container');
             if (container) container.innerHTML = ''; 
 
-            const mp = new window.MercadoPago('APP_USR-ea2926b9-bc64-408d-92e9-08181a212d7c', { 
+            const mp = new window.MercadoPago('APP_USR-5085620590656834-010519-75f9c2645782ba627abd3c72de22fe8a-3113708019', { 
                 locale: 'es-CL' 
             });
             const bricksBuilder = mp.bricks();
@@ -69,17 +70,25 @@ const PlansTab: React.FC<{ currentUser: any, onUpdateUser?: () => void }> = ({ c
                         onSubmit: async ({ formData }: any) => {
                             setIsProcessing(true);
                             try {
-                                const result = await apiService.processMPTransaction(
-                                    formData, 
-                                    selectedPlan.id, 
-                                    currentUser.id
-                                );
+                                const functions = getFunctions();
+                                const processPayment = httpsCallable(functions, 'processPayment');
+
+                                // LLAMADA AL BACKEND (TU CLOUD FUNCTION)
+                                const response: any = await processPayment({
+                                    token: formData.token,
+                                    issuer_id: formData.issuer_id,
+                                    payment_method_id: formData.payment_method_id,
+                                    installments: formData.installments,
+                                    planId: selectedPlan.id
+                                });
+
+                                const result = response.data;
 
                                 if (result.status === 'approved') {
                                     // --- LÓGICA DE ENVÍO DE CORREO ---
                                     try {
                                         const emailContent = getWelcomeEmailTemplate(
-                                            currentUser.firstName, 
+                                            currentUser.firstName || 'Usuario', 
                                             selectedPlan.title, 
                                             result.id || 'N/A'
                                         );
@@ -94,7 +103,6 @@ const PlansTab: React.FC<{ currentUser: any, onUpdateUser?: () => void }> = ({ c
                                     } catch (mailErr) {
                                         console.error("Error al registrar orden de correo:", mailErr);
                                     }
-                                    // --- FIN LÓGICA CORREO ---
 
                                     await Swal.fire({
                                         title: '¡SUSCRIPCIÓN ACTIVA!',
@@ -104,13 +112,14 @@ const PlansTab: React.FC<{ currentUser: any, onUpdateUser?: () => void }> = ({ c
                                         customClass: { popup: 'rounded-[2.5rem]' }
                                     });
                                     
-                                    if (onUpdateUser) onUpdateUser();
+                                    if (onUpdateUser) onUpdateUser({ ...currentUser, subscription_tier: 'PRO' });
                                     navigate('/analyzer');
                                 } else {
                                     Swal.fire('Atención', `Estado del pago: ${result.status}`, 'info');
                                 }
                             } catch (error: any) {
-                                Swal.fire('Error', 'La tarjeta fue rechazada o los datos son inválidos.', 'error');
+                                console.error("Error procesando pago:", error);
+                                Swal.fire('Error', 'Hubo un problema procesando la tarjeta.', 'error');
                             } finally {
                                 setIsProcessing(false);
                             }

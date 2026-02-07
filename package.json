@@ -13,6 +13,7 @@
   "dependencies": {
     "@google/genai": "^1.38.0",
     "@google/generative-ai": "^0.24.1",
+    "@mercadopago/sdk-react": "^1.0.7",
     "@tailwindcss/postcss": "^4.1.18",
     "canvas-confetti": "^1.9.4",
     "clsx": "^2.1.1",

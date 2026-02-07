@@ -1,15 +1,15 @@
 
-import React, { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
-import type { HistoryEntry, UserData, MealType } from '../types';
+import React, { useState, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
+import type { HistoryEntry, UserData, MealType } from '../types'
 import { 
     ChevronLeftIcon, ChevronRightIcon, SunIcon, MoonIcon, BuildingOfficeIcon, 
     CubeIcon, PersonCycleIcon, PlusIcon, PencilIcon, TrashIcon,
     SparklesIcon, ArrowRightIcon, CheckBadgeIcon, HeartIcon, InformationCircleIcon,
     XMarkIcon
-} from './Icons';
-import MealDetailModal from './MealDetailModal';
-import { MetraCore, type CommunitySuggestion } from '../services/metraCore';
+} from './ui/Icons'
+import MealDetailModal from './modals/from './MealDetailModal'';
+import { MetraCore, type CommunitySuggestion } from '../services/metraCore'
 
 interface DailyLogProps {
     history: HistoryEntry[];
@@ -48,7 +48,7 @@ const DailyLogComponent: React.FC<DailyLogProps> = ({ history, currentUser, onQu
     const [isDeleting, setIsDeleting] = useState(false);
 
     const dayKey = currentDate.toISOString().split('T')[0];
-    const isPro = currentUser?.subscription_tier === 'PRO';
+    const isPro = currentUser?.subscription_tier === 'PRO'
     
     const entriesForDay = useMemo(() => {
         if (!history || !Array.isArray(history)) return [];
@@ -132,7 +132,7 @@ const DailyLogComponent: React.FC<DailyLogProps> = ({ history, currentUser, onQu
                                     {hasEntries ? (
                                         <div className="space-y-3">
                                             {entries.map((entry, idx) => (
-                                                <div key={entry.id} className={`flex items-center justify-between ${idx > 0 ? 'pt-3 border-t border-slate-50' : ''}`}>
+                                                <div key={entry.id} className={`flex items-center justify-between ${idx > 0 ? 'pt-3 border-t border-slate-50' : '}`}>
                                                     <div>
                                                         <h4 className="text-lg font-black text-slate-800 tracking-tight">
                                                             {entry.totalCarbs}g <span className="text-xs text-slate-400 font-bold uppercase tracking-tighter ml-1">Carbohidratos</span>

@@ -1,12 +1,12 @@
 
-import React, { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { 
     CheckCircleIcon, ArrowRightIcon, 
     RobotIcon, ClipboardDocumentListIcon, InstagramIcon
-} from './Icons';
-import confetti from 'canvas-confetti';
-import { motion } from 'framer-motion';
+} from './ui/Icons'
+import confetti from 'canvas-confetti'
+import { motion } from 'framer-motion'
 
 const PaymentSuccess: React.FC = () => {
   const navigate = useNavigate();

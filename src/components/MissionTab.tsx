@@ -1,10 +1,10 @@
 
-import React from 'react';
+import React from 'react'
 import { 
     SparklesIcon, CheckCircleIcon, CloudArrowUpIcon, 
     RobotIcon, ChartPieIcon, ActivityIcon, BuildingOfficeIcon,
     ShieldCheckIcon, TargetIcon
-} from './Icons';
+} from './ui/Icons'
 
 interface MissionTabProps {
   onRegisterClick: () => void;

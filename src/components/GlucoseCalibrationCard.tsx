@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
-import { Activity, CheckCircle2, ChevronRight, Info } from 'lucide-react';
-import { apiService } from '../services/apiService';
-import type { HistoryEntry } from '../types';
+import React, { useState } from 'react'
+import { Activity, CheckCircle2, ChevronRight, Info } from 'lucide-react'
+import { apiService } from '../services/apiService'
+import type { HistoryEntry } from '../types'
 
 interface Props {
   entry: HistoryEntry;

@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
-import type { Hba1cEntry } from '../types';
-import Hba1cInputForm from './Hba1cInputForm';
-import { PencilIcon, TrashIcon, PlusIcon } from './Icons';
+import React, { useState } from 'react'
+import type { Hba1cEntry } from '../types'
+import Hba1cInputForm from './Hba1cInputForm'
+import { PencilIcon, TrashIcon, PlusIcon } from './ui/Icons'
 
 interface Hba1cHistoryManagerProps {
     history: Hba1cEntry[];
@@ -29,7 +29,7 @@ const Hba1cHistoryManager: React.FC<Hba1cHistoryManagerProps> = ({ history, onSa
         setEditingEntry(null);
     };
 
-    const handleSaveOrUpdate = async (data: { value: number; unit: 'PERCENT' | 'MMOL_MOL'; date: string; id?: string }) => {
+    const handleSaveOrUpdate = async (data: { value: number; unit: 'PERCENT' | 'MMOL_MOL'' date: string; id?: string }) => {
         if (data.id && editingEntry) { // It's an update
             const fullEntry: Hba1cEntry = { ...data, userId: editingEntry.userId, id: data.id };
             await onUpdate(fullEntry);

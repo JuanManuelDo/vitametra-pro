@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import type { Reminder } from '../types';
-import { requestNotificationPermission } from '../utils/notifications';
-import { BellIcon, TrashIcon, CheckCircleIcon, XCircleIcon } from './Icons';
+import React, { useState, useEffect } from 'react'
+import type { Reminder } from '../types'
+import { requestNotificationPermission } from '../utils/notifications'
+import { BellIcon, TrashIcon, CheckCircleIcon, XCircleIcon } from './ui/Icons'
 
 interface NotificationsTabProps {
   reminders: Reminder[];

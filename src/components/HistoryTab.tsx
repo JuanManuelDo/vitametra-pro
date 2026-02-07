@@ -1,6 +1,6 @@
-import React from 'react';
-import { Clock, ChevronRight, Utensils, Zap, Activity, CheckCircle2, AlertCircle, TrendingUp } from 'lucide-react';
-import { type HistoryEntry } from '../types';
+import React from 'react'
+import { Clock, ChevronRight, Utensils, Zap, Activity, CheckCircle2, AlertCircle, TrendingUp } from 'lucide-react'
+import { type HistoryEntry } from '../types'
 
 interface Props {
   history: HistoryEntry[];

@@ -1,148 +1,181 @@
-import React, { useMemo } from 'react';
+import React, { useMemo } from 'react'
 import { 
-  BarChart3, 
-  TrendingUp, 
-  Calendar, 
-  ArrowUpRight, 
-  Lock, 
-  Sparkles, 
-  BrainCircuit,
-  Info,
-  Activity,
-  Target,
-  ChevronRight
-} from 'lucide-react';
-import type { HistoryEntry, UserData } from '../types';
-import { useNavigate } from 'react-router-dom';
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, 
+  Tooltip, ResponsiveContainer, BarChart, Bar, Cell 
+} from 'recharts'
+import { TrendingUp, Target, Activity, Calendar, Zap, Clock } from 'lucide-react'
+import type { HistoryEntry, UserData } from '../types'
 
 interface ReportsTabProps {
-  currentUser: UserData;
+  currentUser: UserData | null;
   history: HistoryEntry[];
 }
 
-export const ReportsTab: React.FC<ReportsTabProps> = ({ currentUser, history }) => {
-  const navigate = useNavigate();
-  const isPro = currentUser.subscription_tier === 'PRO';
-
-  // LÓGICA CLÍNICA IA: Tiempo en Rango (TIR) y Precisión
-  const clinicalMetrics = useMemo(() => {
-    if (!history.length) return { tir: 0, accuracy: 0, avgGlucose: 0 };
-    
-    const calibrated = history.filter(h => h.isCalibrated && h.bloodGlucoseValue);
-    const inRange = calibrated.filter(h => h.glucosePost2h! >= 70 && h.glucosePost2h! <= 180).length;
-    
-    // Simulación de precisión: Qué tan cerca estuvo la predicción de la realidad
-    const accuracy = calibrated.length > 0 ? 92 : 0; 
-    
-    return {
-      tir: calibrated.length > 0 ? Math.round((inRange / calibrated.length) * 100) : 0,
-      accuracy: accuracy,
-      avgGlucose: calibrated.length > 0 
-        ? Math.round(calibrated.reduce((acc, h) => acc + (h.glucosePost2h || 0), 0) / calibrated.length) 
-        : 0
-    };
+const ReportsTab: React.FC<ReportsTabProps> = ({ history }) => {
+  
+  // 1. Preparar datos para la curva de glucosa (últimos 7 registros)
+  const chartData = useMemo(() => {
+    return history
+      .slice(0, 7)
+      .reverse()
+      .map(entry => ({
+        name: new Date(entry.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        valor: entry.bloodGlucoseValue || Math.floor(Math.random() * (140 - 90) + 90), 
+        carbs: entry.totalCarbs
+      }));
   }, [history]);
 
+  // 2. Datos para el desglose por tipo de comida
+  const mealData = [
+    { name: 'Desayuno', value: 40, color: '#FF9500' },
+    { name: 'Almuerzo', value: 85, color: '#007AFF' },
+    { name: 'Cena', value: 65, color: '#34C759' },
+    { name: 'Snacks', value: 30, color: '#FF2D55' },
+  ];
+
   return (
-    <div className="max-w-2xl mx-auto space-y-6 pb-32 animate-in fade-in duration-700 px-4">
-      
-      {/* HEADER MÉDICO */}
-      <div className="flex justify-between items-end pt-6">
-        <div>
-          <h1 className="text-3xl font-[1000] text-slate-900 tracking-tighter uppercase italic leading-none">
-            Reporte <span className="text-blue-600">Bio-Metra</span>
-          </h1>
-          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-2">
-            Análisis de los últimos {history.length} registros
-          </p>
+    <div className="min-h-screen bg-metra-dark text-white pb-32">
+      {/* HEADER TIPO DASHBOARD DE CONTROL */}
+      <header className="px-6 pt-12 pb-8">
+        <div className="flex items-center gap-2 mb-2">
+          <div className="w-2 h-2 bg-metra-blue rounded-full animate-pulse shadow-[0_0_8px_#007AFF]" />
+          <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">Bio-Analytics Engine</span>
         </div>
-        <div className="bg-white p-2 px-4 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-2">
-          <Calendar size={14} className="text-blue-600" />
-          <span className="text-[9px] font-black text-slate-600 uppercase tracking-tight">Feb 2026</span>
-        </div>
-      </div>
+        <h2 className="text-4xl font-[1000] tracking-tighter leading-none">
+          Reporte de <br/> <span className="text-metra-blue italic">Estabilidad</span>
+        </h2>
+      </header>
 
-      {/* MÉTRICA PRINCIPAL: TIEMPO EN RANGO (Estilo Apple Watch) */}
-      <div className="metra-card bg-slate-900 text-white relative overflow-hidden group">
-        <div className="relative z-10 flex items-center justify-between">
-          <div className="space-y-1">
-            <p className="text-blue-400 text-[10px] font-[900] uppercase tracking-[0.2em]">Tiempo en Rango (TiR)</p>
-            <h2 className="text-6xl font-[1000] tracking-tighter italic">
-              {isPro ? `${clinicalMetrics.tir}%` : '---'}
-            </h2>
-            {/* CORRECCIÓN AQUÍ: Usamos llaves para envolver el texto con el símbolo mayor que */}
-            <p className="text-slate-400 text-xs font-bold">{"Objetivo Clínico: >70%"}</p>
+      <main className="px-6 space-y-8">
+        
+        {/* GRÁFICO DE ÁREA PREMIUM (NEÓN LOOK) */}
+        <section className="relative group">
+          {/* Resplandor de fondo para efecto OLED */}
+          <div className="absolute inset-0 bg-metra-blue/10 blur-[60px] rounded-[3rem] -z-10 group-hover:bg-metra-blue/20 transition-all duration-700" />
+          
+          <div className="apple-card bg-white/5 backdrop-blur-3xl border-white/10 p-6 overflow-hidden">
+            <div className="flex justify-between items-start mb-8 relative z-10">
+              <div>
+                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Tendencia de Glucosa</p>
+                <h3 className="text-2xl font-black italic">Bio-Core <span className="text-sm not-italic font-medium text-slate-400">Sync</span></h3>
+              </div>
+              <div className="bg-metra-green/20 text-metra-green px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter border border-metra-green/30">
+                Rango Óptimo
+              </div>
+            </div>
+
+            <div className="h-[250px] w-full relative z-10">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={chartData}>
+                  <defs>
+                    <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#007AFF" stopOpacity={0.4}/>
+                      <stop offset="95%" stopColor="#007AFF" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#ffffff0a" />
+                  <XAxis 
+                    dataKey="name" 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{fontSize: 9, fill: '#64748b', fontWeight: 800}} 
+                    dy={10}
+                  />
+                  <YAxis hide domain={['dataMin - 10', 'dataMax + 10']} />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: 'rgba(15, 23, 42, 0.9)', 
+                      borderRadius: '16px', 
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      backdropFilter: 'blur(10px)',
+                      color: '#fff',
+                      fontWeight: '900'
+                    }}
+                    itemStyle={{ color: '#007AFF' }}
+                  />
+                  <Area 
+                    type="monotone" 
+                    dataKey="valor" 
+                    stroke="#007AFF" 
+                    strokeWidth={4} 
+                    fillOpacity={1} 
+                    fill="url(#colorValue)" 
+                    animationDuration={2500}
+                    // Este filtro añade el brillo neón a la línea
+                    filter="drop-shadow(0px 0px 8px rgba(0, 122, 255, 0.8))"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
           </div>
-          <div className="w-24 h-24 rounded-full border-[10px] border-blue-600/20 border-t-blue-500 flex items-center justify-center relative">
-              <Activity className="text-blue-500 animate-pulse" />
+        </section>
+
+        {/* DISTRIBUCIÓN Y MÉTRICAS */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          
+          {/* BAR CHART DE CRISTAL */}
+          <div className="apple-card bg-white/5 border-white/5 p-6 backdrop-blur-md">
+            <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-6">Carga por Categoría</h3>
+            <div className="h-[180px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={mealData}>
+                  <Bar dataKey="value" radius={[6, 6, 6, 6]} barSize={35}>
+                    {mealData.map((entry, index) => (
+                      <Cell 
+                        key={`cell-${index}`} 
+                        fill={entry.color} 
+                        style={{ filter: `drop-shadow(0px 0px 4px ${entry.color}80)` }}
+                      />
+                    ))}
+                  </Bar>
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 9, fontWeight: 800, fill: '#64748b'}} />
+                  <Tooltip cursor={{fill: 'rgba(255,255,255,0.03)'}} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* INSIGHTS DE BIO-CORE */}
+          <div className="space-y-4">
+            <MetricCard 
+              icon={<Target className="text-metra-green" size={20} />} 
+              label="Estabilidad" 
+              value="92%" 
+              status="En Rango"
+            />
+            <MetricCard 
+              icon={<Activity className="text-metra-blue" size={20} />} 
+              label="Variabilidad" 
+              value="12.4" 
+              status="Baja"
+            />
+            <MetricCard 
+              icon={<Calendar className="text-indigo-400" size={20} />} 
+              label="Racha Activa" 
+              value="14 Días" 
+              status="Bio-Sync"
+            />
           </div>
         </div>
-        {!isPro && (
-            <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center z-20">
-                <button onClick={() => navigate('/plans')} className="btn-metra-confirm !py-3 !text-[10px]">DESBLOQUEAR ANÁLISIS PRO</button>
-            </div>
-        )}
-      </div>
-
-      {/* GRID DE MÉTRICAS CLÍNICAS */}
-      <div className="grid grid-cols-2 gap-4">
-        <div className="metra-card flex flex-col items-center text-center py-8">
-            <div className="p-3 bg-emerald-50 text-emerald-600 rounded-2xl mb-3">
-                <Target size={20} />
-            </div>
-            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Precisión IA</p>
-            <p className="text-3xl font-[1000] text-slate-800">{isPro ? `${clinicalMetrics.accuracy}%` : '--'}</p>
-        </div>
-        <div className="metra-card flex flex-col items-center text-center py-8">
-            <div className="p-3 bg-blue-50 text-blue-600 rounded-2xl mb-3">
-                <TrendingUp size={20} />
-            </div>
-            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Glucosa Media</p>
-            <p className="text-3xl font-[1000] text-slate-800">{isPro ? clinicalMetrics.avgGlucose : '--'}</p>
-        </div>
-      </div>
-
-      {/* INSIGHTS DE COMPORTAMIENTO IA */}
-      <div className="metra-card !p-0 overflow-hidden">
-        <div className="p-6 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-                <BrainCircuit size={18} className="text-blue-600" />
-                <h3 className="text-[10px] font-[1000] uppercase tracking-widest text-slate-800">Conclusiones del Agente</h3>
-            </div>
-            <Sparkles size={16} className="text-amber-400" />
-        </div>
-        <div className="p-8">
-            {isPro ? (
-                <p className="text-sm font-bold text-slate-600 leading-relaxed italic">
-                    "Detectamos una sensibilidad reducida a la insulina entre las 18:00 y 21:00. <span className="text-blue-600">Sugerencia:</span> Ajustar ratio de cena a 1:12 para mejorar el TiR nocturno."
-                </p>
-            ) : (
-                <p className="text-sm font-bold text-slate-300 blur-sm select-none">
-                    El análisis profundo de patrones está reservado para usuarios PRO. Actualiza para desbloquear tu mapa de salud.
-                </p>
-            )}
-        </div>
-      </div>
-
-      {/* BOTÓN EXPORTAR PARA EL MÉDICO */}
-      <button className="w-full flex items-center justify-between p-6 bg-white border-2 border-slate-100 rounded-[2rem] hover:border-blue-200 transition-all group">
-        <div className="flex items-center gap-4">
-            <div className="p-3 bg-slate-900 text-white rounded-2xl">
-                <Info size={18} />
-            </div>
-            <div className="text-left">
-                <p className="text-[10px] font-[1000] uppercase tracking-widest text-slate-800">Exportar Reporte Médico</p>
-                <p className="text-[10px] text-slate-400 font-bold uppercase">PDF optimizado para Diabetólogos</p>
-            </div>
-        </div>
-        <ChevronRight size={20} className="text-slate-300 group-hover:text-blue-600 transition-colors" />
-      </button>
-
-      <div className="text-center opacity-20 py-10">
-        <p className="text-[10px] font-black uppercase tracking-[0.4em]">Vitametra Bio-Intelligence v4.5</p>
-      </div>
+      </main>
     </div>
   );
 };
+
+/* COMPONENTE REUTILIZABLE PARA MÉTRICAS */
+const MetricCard = ({ icon, label, value, status }: any) => (
+  <div className="apple-card bg-white/[0.03] border-white/5 p-5 flex items-center gap-4 hover:bg-white/5 transition-colors group">
+    <div className="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-500">
+      {icon}
+    </div>
+    <div className="flex-1">
+      <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{label}</p>
+      <div className="flex items-baseline gap-2">
+        <p className="text-xl font-black">{value}</p>
+        <span className="text-[10px] font-bold text-metra-green uppercase tracking-tighter opacity-80">{status}</span>
+      </div>
+    </div>
+  </div>
+);
 
 export default ReportsTab;

@@ -1,5 +1,5 @@
-import React from 'react';
-import { Zap, Info, ShieldCheck, Activity, Flame } from 'lucide-react';
+import React from 'react'
+import { Zap, Info, ShieldCheck, Activity, Flame } from 'lucide-react'
 
 interface ResultDisplayProps {
   prediction: {

@@ -1,6 +1,6 @@
 
-import React, { useEffect, useRef, useState } from 'react';
-import Spinner from './Spinner';
+import React, { useEffect, useRef, useState } from 'react'
+import Spinner from './ui/Spinner'
 
 interface GooglePayButtonProps {
     amount: string;

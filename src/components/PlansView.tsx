@@ -1,5 +1,5 @@
-import React from 'react';
-import { Check, Zap, Star, Shield, Crown, Sparkles, Globe, ArrowRight } from 'lucide-react';
+import React from 'react'
+import { Check, Zap, Star, Shield, Crown, Sparkles, Globe, ArrowRight } from 'lucide-react'
 
 interface PlansViewProps {
   onSelectPlan: (planId: string) => void;

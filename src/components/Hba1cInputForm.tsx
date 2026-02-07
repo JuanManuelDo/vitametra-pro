@@ -1,10 +1,10 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import type { Hba1cEntry } from '../types';
-import Spinner from './Spinner';
-import { XMarkIcon } from './Icons';
+import React, { useState, useMemo, useEffect } from 'react'
+import type { Hba1cEntry } from '../types'
+import Spinner from './ui/Spinner'
+import { XMarkIcon } from './ui/Icons'
 
 interface Hba1cInputFormProps {
-  onSave: (entryData: { value: number; unit: 'PERCENT' | 'MMOL_MOL'; date: string; id?: string }) => Promise<void>;
+  onSave: (entryData: { value: number; unit: 'PERCENT' | 'MMOL_MOL'' date: string; id?: string }) => Promise<void>;
   entryToEdit?: Hba1cEntry | null;
   onCancel?: () => void;
   isCompact?: boolean;
@@ -84,7 +84,7 @@ const Hba1cInputForm: React.FC<Hba1cInputFormProps> = ({ onSave, entryToEdit, on
     }
   };
 
-  const formTitle = entryToEdit ? 'Editar Examen de HbA1c' : 'Registrar Nuevo Examen de HbA1c';
+  const formTitle = entryToEdit ? 'Editar Examen de HbA1c' : 'Registrar Nuevo Examen de HbA1c'
 
   return (
     <>

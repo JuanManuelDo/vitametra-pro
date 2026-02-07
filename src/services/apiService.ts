@@ -43,6 +43,20 @@ export const apiService = {
         window.location.href = '/';
     },
 
+    // --- CARGA DE PERFIL (Utilizada en Auth / Dashboard) ---
+    async getUserProfile(uid: string): Promise<UserData | null> {
+        try {
+            const docSnap = await getDoc(doc(db, "users", uid));
+            if (docSnap.exists()) {
+                return { id: docSnap.id, ...docSnap.data() } as UserData;
+            }
+            return null;
+        } catch (error) {
+            console.error("Error al obtener perfil único:", error);
+            throw error;
+        }
+    },
+
     // --- NÚCLEO IA Y ANÁLISIS ---
     async analyzeFoodVision(imageB64: string, userId: string) {
         const userSnap = await getDoc(doc(db, "users", userId));
@@ -64,16 +78,9 @@ export const apiService = {
     },
 
     // --- GESTIÓN DE DATOS METABÓLICOS ---
-    
-    /**
-     * FUNCIÓN CRÍTICA: Actualiza cualquier entrada del historial.
-     * Esto soluciona el error de GlucoseCalibrationCard.tsx
-     */
     async updateHistoryEntry(entryId: string, updates: Partial<HistoryEntry>) {
         try {
             const docRef = doc(db, "ingestas", entryId);
-            
-            // Limpieza de datos para Firestore (evita undefined)
             const cleanUpdates = Object.fromEntries(
                 Object.entries(updates).filter(([_, v]) => v !== undefined)
             );
@@ -103,7 +110,6 @@ export const apiService = {
             );
 
             const historyRef = collection(db, "ingestas");
-            
             const entryData = {
                 userId,
                 ratioUsed: activeRatio,
@@ -144,6 +150,45 @@ export const apiService = {
         }
     },
 
+    // --- SUBSCRIPCIONES REAL-TIME (DASHBOARD) ---
+    subscribeToUserProfile(uid: string, callback: (user: UserData | null) => void): Unsubscribe {
+        return onSnapshot(doc(db, "users", uid), (snapshot) => {
+            if (snapshot.exists()) {
+                callback({ id: snapshot.id, ...snapshot.data() } as UserData);
+            } else {
+                callback(null);
+            }
+        });
+    },
+
+    subscribeToHistory(userId: string, callback: (data: HistoryEntry[]) => void): Unsubscribe {
+        const q = query(
+            collection(db, "ingestas"), 
+            where("userId", "==", userId), 
+            orderBy("createdAt", "desc"),
+            limit(50)
+        );
+        return onSnapshot(q, (snapshot) => {
+            callback(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any)));
+        });
+    },
+
+    // FUNCIÓN PARA HISTORIAL DE HBA1C (Evita el TypeError)
+    subscribeToHba1cHistory(userId: string, callback: (data: any[]) => void): Unsubscribe {
+        const q = query(
+            collection(db, "hba1c_history"), 
+            where("userId", "==", userId), 
+            orderBy("createdAt", "desc"),
+            limit(10)
+        );
+        return onSnapshot(q, (snapshot) => {
+            callback(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+        }, (error) => {
+            console.warn("Colección hba1c_history no encontrada:", error);
+            callback([]); // Retorna vacío pero mantiene el sistema vivo
+        });
+    },
+
     // --- UTILIDADES ---
     _getRatioForTime(time: string, schedule: InsulinRatioSegment[]): number {
         if (!schedule || schedule.length === 0) return 15;
@@ -164,29 +209,6 @@ export const apiService = {
             daily_ia_usage: currentUsage + 1,
             last_ia_usage_date: dateStr,
             updatedAt: serverTimestamp()
-        });
-    },
-
-    // --- SUBSCRIPCIONES REAL-TIME ---
-    subscribeToUserProfile(uid: string, callback: (user: UserData | null) => void): Unsubscribe {
-        return onSnapshot(doc(db, "users", uid), (snapshot) => {
-            if (snapshot.exists()) {
-                callback({ id: snapshot.id, ...snapshot.data() } as UserData);
-            } else {
-                callback(null);
-            }
-        });
-    },
-
-    subscribeToHistory(userId: string, callback: (data: HistoryEntry[]) => void): Unsubscribe {
-        const q = query(
-            collection(db, "ingestas"), 
-            where("userId", "==", userId), 
-            orderBy("createdAt", "desc"),
-            limit(50)
-        );
-        return onSnapshot(q, (snapshot) => {
-            callback(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any)));
         });
     },
 

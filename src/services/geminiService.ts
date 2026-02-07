@@ -9,8 +9,8 @@ import type { AnalysisResult, GlucoseEntry, HistoryEntry, ReportConfig, UserData
 // Debes moverla a variables de entorno
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY || "AIzaSyCvKs5Il5CbmxoobL7qWwde_ReYAyet5ws";
 
-// Endpoint corregido para Gemini 1.5 Flash
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash-latest:generateContent?key=${API_KEY}`;
+// Endpoint corregido para Gemini 2.5 Flash
+const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${API_KEY}`;
 
 export const analyzeFoodVision = async (
   content: string, 
@@ -39,7 +39,7 @@ Responde ÚNICAMENTE con un objeto JSON válido en este formato exacto, sin mark
   
   if (isImage) {
     parts.push({ 
-      inline_data: { // Nota: usa inline_data con guión bajo
+      inline_data: {
         mime_type: mimeType, 
         data: content 
       } 
@@ -54,10 +54,10 @@ Responde ÚNICAMENTE con un objeto JSON válido en este formato exacto, sin mark
       parts: parts
     }],
     generationConfig: {
-      temperature: 0.4, // Baja temperatura para respuestas más consistentes
+      temperature: 0.4,
       topP: 0.8,
       topK: 40,
-      maxOutputTokens: 2048,
+      maxOutputTokens: 8192,
     }
   };
 
@@ -81,7 +81,6 @@ Responde ÚNICAMENTE con un objeto JSON válido en este formato exacto, sin mark
 
     const data = await response.json();
     
-    // Validación de respuesta
     if (!data.candidates?.[0]?.content?.parts?.[0]?.text) {
       console.error("❌ Respuesta inválida:", data);
       throw new Error("Respuesta vacía del servicio");
@@ -90,13 +89,9 @@ Responde ÚNICAMENTE con un objeto JSON válido en este formato exacto, sin mark
     const rawText = data.candidates[0].content.parts[0].text;
     console.log('📥 Respuesta raw:', rawText);
     
-    // Extractor mejorado: elimina markdown y espacios
     let jsonText = rawText.trim();
-    
-    // Eliminar bloques de código markdown si existen
     jsonText = jsonText.replace(/```json\s*/g, '').replace(/```\s*/g, '');
     
-    // Buscar el objeto JSON
     const jsonMatch = jsonText.match(/\{[\s\S]*\}/);
     
     if (!jsonMatch) {
@@ -112,7 +107,6 @@ Responde ÚNICAMENTE con un objeto JSON válido en este formato exacto, sin mark
   } catch (error: any) {
     console.error("💥 Engine Fault:", error);
     
-    // Mensajes de error más específicos
     if (error.message.includes('API key')) {
       throw new Error("Error de autenticación. Verifica tu API key.");
     }
@@ -127,20 +121,15 @@ Responde ÚNICAMENTE con un objeto JSON válido en este formato exacto, sin mark
   }
 };
 
-/**
- * Mapeo de funciones core para compatibilidad con la UI
- */
 export const analyzeFoodText = (text: string) => analyzeFoodVision(text, false);
 
 export const generateAIClinicalReport = async (
   history: HistoryEntry[], 
   config: ReportConfig
 ): Promise<string> => {
-  // TODO: Implementar cuando sea necesario
   return "Análisis de tendencias metabólicas disponible en breve.";
 };
 
 export const parseGlucometerData = async (data: any): Promise<GlucoseEntry[]> => {
-  // TODO: Implementar cuando sea necesario
   return [];
 };

@@ -1,6 +1,6 @@
-import React from 'react';
-import Spinner from './Spinner';
-import { SparklesIcon } from './Icons';
+import React from 'react'
+import Spinner from './ui/Spinner'
+import { SparklesIcon } from './ui/Icons'
 
 interface EcosystemTabProps {
   imageUrl: string | null;

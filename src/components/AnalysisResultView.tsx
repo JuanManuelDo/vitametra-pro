@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
-import { Zap, Clock, TrendingDown, ChevronRight, Share2 } from 'lucide-react';
-import { type AnalysisResult } from '../types';
-import SaveModal from './SaveModal';
+import React, { useState } from 'react'
+import { Zap, Clock, TrendingDown, CheckCircle2, Info, AlertCircle } from 'lucide-react'
+import { type AnalysisResult } from '../types'
+import SaveModal from './modals/from './SaveModal'';
 
 interface Props {
   result: AnalysisResult;
@@ -12,64 +12,103 @@ interface Props {
 export const AnalysisResultView: React.FC<Props> = ({ result, foodName, onSaveSuccess }) => {
   const [showSaveModal, setShowSaveModal] = useState(false);
 
-  const getGiColor = (gi: string) => {
+  // Lógica de colores basada en tu @theme y el impacto
+  const getImpactStatus = (gi: string) => {
     const val = gi.toLowerCase();
-    if (val.includes('bajo')) return 'text-[#22C55E]';
-    if (val.includes('medio')) return 'text-[#F59E0B]';
-    return 'text-[#EF4444]';
+    if (val.includes('bajo')) return { 
+      color: 'text-metra-green', 
+      bg: 'bg-metra-green/10', 
+      icon: <CheckCircle2 size={14} />,
+      label: 'Impacto Controlado' 
+    };
+    if (val.includes('medio')) return { 
+      color: 'text-orange-500', 
+      bg: 'bg-orange-50', 
+      icon: <Info size={14} />,
+      label: 'Impacto Moderado' 
+    };
+    return { 
+      color: 'text-red-500', 
+      bg: 'bg-red-50', 
+      icon: <AlertCircle size={14} />,
+      label: 'Impacto Elevado' 
+    };
   };
 
-  return (
-    <div className="mt-8 space-y-6 animate-in fade-in slide-in-from-bottom-8 duration-700">
-      {/* CARD PRINCIPAL - ESTILO IMAGEN 4 */}
-      <div className="bg-white rounded-[3rem] shadow-[0_20px_50px_rgba(0,0,0,0.05)] border border-gray-50 p-8 relative overflow-hidden text-center">
-        
-        <span className="inline-block px-5 py-2 rounded-full bg-slate-100 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 mb-4">
-          Impacto Glucémico {result.glycemicIndex}
-        </span>
+  const status = getImpactStatus(result.glycemicIndex);
 
-        <h3 className="text-slate-400 font-bold text-xs uppercase tracking-widest mb-2">Carbohidratos Identificados</h3>
+  return (
+    <div className="space-y-6 animate-in fade-in slide-in-from-right-8 duration-700">
+      
+      {/* CARD PRINCIPAL - ESTILO PREMIUM APPLE */}
+      <div className="apple-card p-8 relative overflow-hidden text-center bg-white">
         
-        {/* NÚMERO GIGANTE ESTILO VITA PRO */}
-        <div className="relative inline-block">
-          <h1 className={`text-[120px] leading-none font-black tracking-tighter ${getGiColor(result.glycemicIndex)}`}>
-            {result.totalCarbs}<span className="text-4xl ml-1 text-slate-300">g</span>
+        {/* Badge de Impacto */}
+        <div className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full ${status.bg} ${status.color} mb-6`}>
+          {status.icon}
+          <span className="text-[10px] font-black uppercase tracking-widest leading-none">
+            {status.label}
+          </span>
+        </div>
+
+        <h3 className="text-slate-400 font-bold text-[11px] uppercase tracking-[0.2em] mb-2">
+          Total Carbohidratos
+        </h3>
+        
+        {/* NÚMERO GIGANTE CON KERNING APPLE */}
+        <div className="relative inline-block mb-4">
+          <h1 className={`text-[110px] leading-none font-black tracking-tighter ${status.color} flex items-baseline justify-center`}>
+            {result.totalCarbs}
+            <span className="text-3xl ml-2 text-slate-300 font-black">g</span>
           </h1>
         </div>
 
-        {/* AMORTIGUADOR METABÓLICO (Imagen 5) */}
-        <div className="grid grid-cols-3 gap-2 mt-8">
-            <div className="bg-emerald-50 p-4 rounded-3xl border border-emerald-100/50">
-                <p className="text-[10px] font-black text-emerald-600 uppercase">Fibra</p>
-                <p className="text-xl font-bold text-emerald-700">{result.totalFiber}g</p>
+        <div className="mb-8">
+           <h2 className="text-2xl font-bold text-metra-dark capitalize">{foodName}</h2>
+           <div className="flex items-center justify-center gap-2 text-slate-400 mt-1">
+             <Clock size={14} />
+             <span className="text-xs font-medium uppercase tracking-tighter">Proyección Metabólica Bio-Core</span>
+           </div>
+        </div>
+
+        {/* MÉTRICAS SECUNDARIAS (Bento Box Style) */}
+        <div className="grid grid-cols-3 gap-3">
+            <div className="bg-metra-slate p-4 rounded-[2rem] border border-white">
+                <p className="text-[9px] font-black text-slate-400 uppercase mb-1">Fibra</p>
+                <p className="text-xl font-black text-metra-dark">{result.totalFiber}g</p>
             </div>
-            <div className="bg-blue-50 p-4 rounded-3xl border border-blue-100/50">
-                <p className="text-[10px] font-black text-blue-600 uppercase">Netos</p>
-                <p className="text-xl font-bold text-blue-700">{result.netCarbs}g</p>
+            <div className="bg-metra-slate p-4 rounded-[2rem] border border-white">
+                <p className="text-[9px] font-black text-slate-400 uppercase mb-1">Netos</p>
+                <p className="text-xl font-black text-metra-blue">{result.netCarbs}g</p>
             </div>
-            <div className="bg-purple-50 p-4 rounded-3xl border border-purple-100/50">
-                <p className="text-[10px] font-black text-purple-600 uppercase">Proteína</p>
-                <p className="text-xl font-bold text-purple-700">--</p>
+            <div className="bg-metra-slate p-4 rounded-[2rem] border border-white">
+                <p className="text-[9px] font-black text-slate-400 uppercase mb-1">I.G.</p>
+                <p className={`text-xl font-black ${status.color}`}>{result.glycemicIndex.split(' ')[0]}</p>
             </div>
         </div>
 
-        {/* BOTÓN CONFIRMAR - EL GRANDE VERDE */}
+        {/* BOTÓN CONFIRMAR - REDISEÑADO */}
         <button 
           onClick={() => setShowSaveModal(true)}
-          className="w-full mt-8 bg-[#22C55E] hover:bg-[#1ca84f] text-white rounded-[2rem] p-6 flex items-center justify-center gap-3 transition-all transform active:scale-95 shadow-xl shadow-green-200"
+          className="w-full mt-8 bg-metra-blue text-white rounded-[2rem] p-5 flex items-center justify-center gap-3 apple-btn shadow-xl shadow-metra-blue/20"
         >
-          <Zap size={24} fill="white" />
-          <span className="font-black text-xl">CONFIRMAR REGISTRO</span>
+          <Zap size={22} fill="white" />
+          <span className="font-bold text-lg tracking-tight">Confirmar en Bitácora</span>
         </button>
       </div>
 
-      {/* RECOMENDACIÓN IA ESTILO IMAGEN 5 */}
-      <div className="bg-[#0F172A] p-7 rounded-[2.5rem] text-white shadow-2xl relative overflow-hidden">
-        <div className="absolute -right-4 -top-4 opacity-10">
-            <TrendingDown size={120} />
+      {/* RECOMENDACIÓN IA - DARK MODE APPLE STYLE */}
+      <div className="bg-metra-dark p-8 rounded-[2.5rem] text-white shadow-2xl relative overflow-hidden group">
+        <div className="absolute -right-6 -bottom-6 opacity-5 group-hover:scale-110 transition-transform duration-700 text-metra-blue">
+            <TrendingDown size={140} />
         </div>
-        <h4 className="font-black text-[#38BDF8] text-[10px] uppercase tracking-[0.2em] mb-3">Optimización Bio-Vitametra</h4>
-        <p className="text-slate-300 text-sm leading-relaxed font-medium italic">
+        
+        <div className="flex items-center gap-2 mb-4">
+            <div className="h-2 w-2 bg-metra-blue rounded-full animate-pulse" />
+            <h4 className="font-black text-metra-blue text-[10px] uppercase tracking-[0.2em]">Bio-Vitametra Neural Optimization</h4>
+        </div>
+        
+        <p className="text-slate-200 text-sm leading-relaxed font-medium">
           "{result.optimizationTip}"
         </p>
       </div>

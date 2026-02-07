@@ -1,15 +1,15 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react'
 import { 
     ActivityIcon, BuildingOfficeIcon, RobotIcon, 
     DocumentTextIcon, UserCircleIcon, 
     CheckCircleIcon, ShieldCheckIcon,
     SparklesIcon, ChartPieIcon, CreditCardIcon, ArrowRightIcon,
     ClockIcon, TargetIcon
-} from './Icons';
-import Spinner from './Spinner';
-import { apiService } from '../services/apiService';
-import type { FounderBusinessMetrics } from '../types';
+} from './ui/Icons'
+import Spinner from './ui/Spinner'
+import { apiService } from '../services/apiService'
+import type { FounderBusinessMetrics } from '../types'
 
 const SharkMetric: React.FC<{ label: string; value: string | number; sub: string; icon: any; color: string }> = ({ label, value, sub, icon: Icon, color }) => (
     <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm flex flex-col items-center text-center">
