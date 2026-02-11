@@ -2,22 +2,15 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { onAuthStateChanged } from 'firebase/auth';
 
-// --- CONFIGURACIÓN DE IDENTIDAD VITAMETRA ---
-import { APP_CONFIG, UI_MESSAGES } from './constants';
-
-// --- COMPONENTES DE UI NUCLEARES ---
+// --- UI & CORE ---
 import Header from './components/ui/Header';
 import Navigation from './components/ui/Navigation';
 import Snackbar from './components/ui/Snackbar';
 import LockedView from './components/LockedView';
-
-// --- SISTEMA DE MODALES E INTERACCIÓN ---
 import LoginModal from './components/modals/LoginModal';
-import AuthBarrierModal from './components/modals/AuthBarrierModal'; 
-import LimitReachedModal from './components/modals/LimitReachedModal'; 
 import WelcomeModal from './components/WelcomeModal';
 
-// --- VISTAS MAESTRAS (TABS) ---
+// --- VISTAS MAESTRAS ---
 import HomeTab from './tabs/HomeTab';
 import HistoryTab from './components/HistoryTab';
 import ProfileTab from './components/ProfileTab';
@@ -29,11 +22,14 @@ import ChatBot from './components/ChatBot';
 import InstitutionalAdminTab from './components/InstitutionalAdminTab';
 import SuperAdminTab from './components/SuperAdminTab';
 
-// --- SERVICIOS CORE ---
+// --- COMPONENTE DE CALIBRACIÓN CLÍNICA ---
+import MedicalSettings from './components/medical/MedicalSettings';
+
+// --- SERVICIOS ---
 import { analyzeFoodText } from './services/geminiService';
 import { apiService } from './services/apiService';
-import { auth } from './services/firebaseService';
-import type { AnalysisResult, UserData, VerifiedFood, HistoryEntry, Hba1cEntry } from './types';
+import { auth, logClinicalEvent } from './services/firebaseService';
+import type { UserData, HistoryEntry, Hba1cEntry } from './types';
 
 const App: React.FC = () => {
   const navigate = useNavigate();
@@ -42,29 +38,20 @@ const App: React.FC = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [currentUser, setCurrentUser] = useState<UserData | null>(null);
   const [isInitializing, setIsInitializing] = useState(true);
-  
-  const [modals, setModals] = useState({
-    login: false,
-    authBarrier: false,
-    limit: false,
-    chat: false
-  });
+  const [modals, setModals] = useState({ login: false, chat: false });
+  const [snackbar, setSnackbar] = useState({ message: '', key: 0 });
 
   const [analysis, setAnalysis] = useState({
     input: '',
     isLoading: false,
-    result: null as AnalysisResult | null,
-    error: null as string | null,
-    dailyLeft: 3
+    result: null as any | null, // Usamos any temporalmente para aceptar la nueva estructura de memoria
+    error: null as string | null
   });
 
   const [dataStreams, setDataStreams] = useState({
     history: [] as HistoryEntry[],
-    hba1c: [] as Hba1cEntry[],
-    lastDeleted: null as HistoryEntry | null
+    hba1c: [] as Hba1cEntry[]
   });
-
-  const [snackbar, setSnackbar] = useState({ message: '', key: 0 });
 
   const notify = (msg: string) => setSnackbar({ message: msg, key: Date.now() });
 
@@ -78,121 +65,154 @@ const App: React.FC = () => {
     }
   }, [location.pathname, navigate]);
 
+  // Sincronización de Autenticación
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        try {
+      try {
+        if (user) {
           const profile = await apiService.getUserProfile(user.uid);
           if (profile) initializeSession(profile);
-        } catch (e) { console.error("Error profile:", e); }
-      } else {
-        setIsLoggedIn(false);
-        setCurrentUser(null);
+        } else {
+          setIsLoggedIn(false);
+          setCurrentUser(null);
+        }
+      } catch (e) {
+        console.error("Auth sync error:", e);
+      } finally {
+        setIsInitializing(false);
       }
-      setIsInitializing(false);
     });
     return () => unsub();
   }, [initializeSession]);
 
+  // Sincronización de Datos Metabólicos (Streams)
   useEffect(() => {
-    if (isLoggedIn && currentUser) {
+    if (isLoggedIn && currentUser?.id) {
       const unsubH = apiService.subscribeToHistory(currentUser.id, (h) => 
         setDataStreams(prev => ({ ...prev, history: h })));
       const unsubHb = apiService.subscribeToHba1cHistory(currentUser.id, (hb) => 
         setDataStreams(prev => ({ ...prev, hba1c: hb })));
       return () => { unsubH(); unsubHb(); };
     }
-  }, [isLoggedIn, currentUser]);
+  }, [isLoggedIn, currentUser?.id]);
 
+  // --- LÓGICA DE ANÁLISIS CON MEMORIA ---
   const handleAnalyze = async () => {
     if (!analysis.input) return;
-    if (!currentUser) { setModals(m => ({ ...m, authBarrier: true })); return; }
-    setAnalysis(prev => ({ ...prev, isLoading: true, result: null, error: null }));
+    
+    setAnalysis(prev => ({ ...prev, isLoading: true, error: null }));
     try {
-      await apiService.checkAnalysisLimit(currentUser.id);
-      const result = await analyzeFoodText(analysis.input, undefined);
-      setAnalysis(prev => ({ 
-        ...prev, 
-        result, 
-        dailyLeft: currentUser.subscription_tier === 'PRO' ? Infinity : Math.max(0, prev.dailyLeft - 1)
-      }));
+      // Si hay usuario, verificamos límites. Si no, permitimos un análisis de prueba.
+      if (currentUser) {
+        await apiService.checkAnalysisLimit(currentUser.id);
+      }
+
+      // IMPORTANTE: Aquí pasamos el currentUser para activar la Memoria a Largo Plazo
+      const result = await analyzeFoodText(analysis.input, currentUser);
+      
+      setAnalysis(prev => ({ ...prev, result }));
+
+      if (currentUser) {
+        await logClinicalEvent(currentUser.id, 'CARBS', result.totalCarbs, { source: 'MENTE_IA' });
+      }
     } catch (err: any) {
-      if (err.message?.includes("límite")) setModals(m => ({ ...m, limit: true }));
-      else setAnalysis(prev => ({ ...prev, error: err.message }));
+      setAnalysis(prev => ({ ...prev, error: err.message }));
+      notify(err.message);
     } finally {
       setAnalysis(prev => ({ ...prev, isLoading: false }));
     }
   };
 
-  if (isInitializing) return <div className="min-h-screen bg-[#F2F2F7] flex items-center justify-center animate-pulse" />;
+  if (isInitializing) {
+    return (
+      <div className="min-h-screen bg-white flex flex-col items-center justify-center">
+        <div className="w-10 h-10 border-2 border-slate-900 border-t-blue-600 rounded-full animate-spin mb-4" />
+        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Sincronizando Mente IA</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-[#F2F2F7]">
-      {isLoggedIn && <WelcomeModal />}
+    <div className="min-h-screen bg-[#F8FAFC]">
+      {isLoggedIn && currentUser && <WelcomeModal />}
 
       <Header 
         isLoggedIn={isLoggedIn} 
         onLoginClick={() => setModals(m => ({ ...m, login: true }))} 
-        onLogoutClick={() => { apiService.logout(); setIsLoggedIn(false); }} 
+        onLogoutClick={() => apiService.logout()} 
         currentUser={currentUser} 
       />
       
       <main className={`container mx-auto px-4 ${location.pathname === '/' ? 'pt-0' : 'pt-24'} pb-32`}>
         <Routes>
-          <Route path="/" element={
-            <HomeTab 
-              currentUser={currentUser || ({} as UserData)} 
-              history={dataStreams.history} 
-              hba1cHistory={dataStreams.hba1c} 
-              onSaveHba1c={(e) => apiService.saveHba1cEntry({...e, id: `hba1c-${Date.now()}`, userId: currentUser?.id || ''})} 
-              onAccessModuleClick={() => navigate('/analyzer')} 
-              onGoToProfileClick={() => navigate('/plans')} 
-              onOpenChatbot={() => setModals(m => ({ ...m, chat: true }))} 
-              dailyAnalysisLeft={analysis.dailyLeft} 
-              onStartClick={() => setModals(m => ({ ...m, login: true }))} 
-            />
-          }/>
-
-          <Route path="/dashboard" element={isLoggedIn ? <Navigate to="/" /> : <Navigate to="/" />} />
+          <Route path="/" element={<HomeTab currentUser={currentUser} onStartClick={() => setModals(m => ({ ...m, login: true }))} history={dataStreams.history} />} />
+          <Route path="/dashboard" element={isLoggedIn && currentUser ? <HomeTab currentUser={currentUser} history={dataStreams.history} onStartClick={() => navigate('/analyzer')} /> : <Navigate to="/" />} />
           
           <Route path="/analyzer" element={
             <div className="max-w-4xl mx-auto pt-10">
-              <h2 className="text-3xl font-[1000] italic uppercase tracking-tighter text-[#007AFF] mb-8 text-center">VITA<span className="text-slate-900">FLOW</span></h2>
+              <h2 className="text-4xl font-black text-slate-900 mb-2 text-center tracking-tighter italic">
+                Bio-Scanner <span className="text-blue-600">IA</span>
+              </h2>
+              <p className="text-center text-slate-400 text-xs font-bold uppercase tracking-widest mb-10">Análisis Metabólico de Precisión</p>
+              
               {!analysis.result ? (
-                <CarbInputForm foodInput={analysis.input} setFoodInput={(val) => setAnalysis(prev => ({ ...prev, input: val }))} onSubmit={handleAnalyze} isLoading={analysis.isLoading} />
+                <CarbInputForm 
+                  foodInput={analysis.input} 
+                  setFoodInput={(val) => setAnalysis(prev => ({ ...prev, input: val }))} 
+                  onSubmit={handleAnalyze} 
+                  isLoading={analysis.isLoading} 
+                />
               ) : (
                 <ResultDisplay 
                   result={analysis.result} 
                   currentUser={currentUser} 
-                  onLogEntry={() => notify("Guardado.")} 
-                  onLoginRequest={() => setModals(m => ({ ...m, login: true }))} 
+                  onLogEntry={() => { 
+                    notify("Registro clínico guardado."); 
+                    setAnalysis(prev => ({ ...prev, result: null, input: '' })); 
+                    navigate('/history');
+                  }} 
                   onAdjust={() => setAnalysis(prev => ({ ...prev, result: null }))} 
-                  onFoodItemVerified={() => {}} 
+                  onLoginRequest={() => setModals(m => ({ ...m, login: true }))}
                   verifiedFoods={[]} 
+                  onFoodItemVerified={() => {}} 
                   onDeleteItem={() => {}} 
                 />
               )}
             </div>
           } />
           
-          <Route path="/history" element={isLoggedIn ? <HistoryTab currentUser={currentUser!} history={dataStreams.history} hba1cHistory={dataStreams.hba1c} onDelete={(id) => apiService.deleteHistoryEntry(id)} onUpdate={() => {}} onSaveHba1c={() => {}} onUpdateHba1c={() => {}} onDeleteHba1c={() => {}} onUpdateLayout={() => {}} onNavigateToAnalyzer={() => navigate('/analyzer')} /> : <LockedView title="Historial" message="Inicia sesión." onLoginClick={() => setModals(m => ({ ...m, login: true }))} onRegisterClick={() => navigate('/register')} />} />
-          <Route path="/profile" element={isLoggedIn ? <ProfileTab currentUser={currentUser!} onUpdateUser={(user) => setCurrentUser(user as UserData)} /> : <LockedView title="Perfil" message="Identifícate." onLoginClick={() => setModals(m => ({ ...m, login: true }))} onRegisterClick={() => navigate('/register')} />} />
-          <Route path="/plans" element={<PlansTab currentUser={currentUser} onUpdateUser={(user) => setCurrentUser(user as UserData)} />} />
+          <Route path="/history" element={isLoggedIn && currentUser ? <HistoryTab currentUser={currentUser} history={dataStreams.history} hba1cHistory={dataStreams.hba1c} onDelete={(id) => apiService.deleteHistoryEntry(id)} onUpdate={() => {}} onSaveHba1c={() => {}} onUpdateHba1c={() => {}} onDeleteHba1c={() => {}} onUpdateLayout={() => {}} onNavigateToAnalyzer={() => navigate('/analyzer')} /> : <Navigate to="/" />} />
+          
+          <Route path="/profile" element={isLoggedIn && currentUser ? <ProfileTab currentUser={currentUser} onUpdateUser={(u) => setCurrentUser(u as UserData)} /> : <Navigate to="/" />} />
+
+          <Route path="/clinical-settings" element={
+            isLoggedIn && currentUser ? (
+              <div className="pt-10">
+                <MedicalSettings currentUser={currentUser} onUpdate={(u) => setCurrentUser(u)} />
+              </div>
+            ) : <Navigate to="/" />
+          } />
+
+          <Route path="/plans" element={<PlansTab currentUser={currentUser} onUpdateUser={(u) => setCurrentUser(u as UserData)} />} />
           <Route path="/register" element={<RegisterTab onLoginSuccess={initializeSession} />} />
           <Route path="/institution" element={isLoggedIn && currentUser?.role === 'ADMIN_INSTITUCIONAL' ? <InstitutionalAdminTab currentUser={currentUser} /> : <Navigate to="/" />} />
           <Route path="/founder" element={isLoggedIn && currentUser?.email === 'admin@vitametra.com' ? <SuperAdminTab /> : <Navigate to="/" />} />
         </Routes>
       </main>
 
-      {isLoggedIn && <Navigation activeTab={location.pathname.substring(1) || 'dashboard'} onTabChange={(tab) => navigate(`/${tab === 'dashboard' ? '' : tab}`)} />}
-      
-      <ChatBot currentUser={currentUser} isOpen={modals.chat} onToggle={() => setModals(m => ({ ...m, chat: !m.chat }))} history={dataStreams.history} />
-      
-      {modals.login && <LoginModal onClose={() => setModals(m => ({ ...m, login: false }))} onLoginSuccess={initializeSession} />}
-      {modals.authBarrier && <AuthBarrierModal onClose={() => setModals(m => ({ ...m, authBarrier: false }))} onRegisterClick={() => navigate('/register')} onLoginClick={() => setModals(m => ({ ...m, login: true }))} />}
-      {modals.limit && <LimitReachedModal onClose={() => setModals(m => ({ ...m, limit: false }))} onUpgradeClick={() => navigate('/plans')} />}
-      
+      {isLoggedIn && (
+        <Navigation 
+          activeTab={location.pathname.substring(1) || 'dashboard'} 
+          onTabChange={(tab) => {
+            const path = tab === 'dashboard' ? '/dashboard' : tab === 'settings' ? '/clinical-settings' : `/${tab}`;
+            navigate(path);
+          }} 
+        />
+      )}
+
+      <ChatBot />
       <Snackbar message={snackbar.message} snackbarKey={snackbar.key} />
+      {modals.login && <LoginModal isOpen={modals.login} onClose={() => setModals(m => ({ ...m, login: false }))} onLoginSuccess={initializeSession} />}
     </div>
   );
 };

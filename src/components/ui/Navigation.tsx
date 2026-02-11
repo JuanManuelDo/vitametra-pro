@@ -1,5 +1,12 @@
 import React from 'react';
-import { Home, History, User, CreditCard, Zap } from 'lucide-react';
+import { 
+  LayoutGrid, 
+  History, 
+  User, 
+  Zap,
+  Settings2
+} from 'lucide-react';
+import { motion } from 'framer-motion';
 
 interface NavigationProps {
   activeTab: string;
@@ -7,45 +14,59 @@ interface NavigationProps {
 }
 
 const Navigation: React.FC<NavigationProps> = ({ activeTab, onTabChange }) => {
-  const navItems = [
-    { id: 'dashboard', icon: <Home size={22} />, label: 'Hoy' },
-    { id: 'history', icon: <History size={22} />, label: 'Bio-Stats' },
-    { id: 'plans', icon: <CreditCard size={22} />, label: 'Premium' },
-    { id: 'profile', icon: <User size={22} />, label: 'Perfil' },
+  
+  const tabs = [
+    { id: 'dashboard', label: 'Inicio', icon: <LayoutGrid size={22} />, path: 'dashboard' },
+    { id: 'analyzer', label: 'Mente IA', icon: <Zap size={22} />, path: 'analyzer' },
+    { id: 'history', label: 'Progreso', icon: <History size={22} />, path: 'history' },
+    { id: 'settings', label: 'Clínico', icon: <Settings2 size={22} />, path: 'settings' }, // Nuevo botón
+    { id: 'profile', label: 'Tú', icon: <User size={22} />, path: 'profile' },
   ];
 
+  // Normalizamos para que coincida con la lógica de App.tsx
+  const currentTabId = activeTab === 'clinical-settings' ? 'settings' : (activeTab || 'dashboard');
+
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-2xl border-t border-slate-200 pb-10 pt-4">
-      <div className="max-w-md mx-auto px-6 flex items-center justify-between">
-        {navItems.map((item) => {
-          const isActive = activeTab === item.id;
+    <div className="fixed bottom-0 left-0 right-0 px-6 pb-8 pt-4 z-[900] pointer-events-none">
+      <nav className="max-w-md mx-auto bg-white/80 backdrop-blur-2xl border border-white/40 shadow-[0_20px_50px_rgba(0,0,0,0.1)] rounded-[2.5rem] px-2 py-3 flex items-center justify-between pointer-events-auto relative overflow-hidden">
+        
+        {tabs.map((tab) => {
+          const isActive = currentTabId === tab.id;
           
           return (
             <button
-              key={item.id}
-              onClick={() => onTabChange(item.id)}
-              className={`relative flex flex-col items-center gap-1.5 transition-all duration-300 active:scale-90 ${
-                isActive ? 'text-[#007AFF]' : 'text-slate-400'
-              }`}
+              key={tab.id}
+              onClick={() => onTabChange(tab.path)}
+              className="relative flex flex-col items-center justify-center py-2 px-3 transition-all duration-500 group flex-1"
             >
-              <div className={`transition-all duration-500 ${isActive ? 'scale-110' : 'scale-100'}`}>
-                {item.icon}
+              {isActive && (
+                <motion.div 
+                  layoutId="nav-indicator"
+                  className="absolute -top-3 w-1.5 h-1.5 bg-blue-600 rounded-full shadow-[0_0_10px_#2563EB]"
+                  transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                />
+              )}
+
+              <div className={`transition-all duration-300 transform ${isActive ? 'scale-110 text-blue-600' : 'text-slate-400 group-hover:text-slate-600'}`}>
+                {tab.icon}
               </div>
 
-              <span className={`text-[9px] font-[1000] uppercase tracking-[0.15em] ${
-                isActive ? 'opacity-100' : 'opacity-50'
-              }`}>
-                {item.label}
+              <span className={`text-[8px] font-black uppercase tracking-[0.1em] mt-1.5 transition-colors duration-300 ${isActive ? 'text-blue-600' : 'text-slate-400'}`}>
+                {tab.label}
               </span>
-              
+
               {isActive && (
-                <div className="absolute -bottom-2 w-1 h-1 bg-[#007AFF] rounded-full animate-in zoom-in" />
+                <motion.div 
+                  layoutId="nav-pill"
+                  className="absolute inset-0 bg-blue-50/50 rounded-2xl -z-10"
+                  transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                />
               )}
             </button>
           );
         })}
-      </div>
-    </nav>
+      </nav>
+    </div>
   );
 };
 

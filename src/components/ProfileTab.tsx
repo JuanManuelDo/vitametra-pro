@@ -1,14 +1,18 @@
 import React, { useState } from 'react';
 import { 
   Camera, Loader2, User, LogOut, ShieldCheck, 
-  Activity, Clock, Target, Scale, X, Droplets, Shield 
+  Activity, Clock, Target, Scale, X, Droplets, Shield, 
+  ChevronRight, Zap, Fingerprint, Sparkles
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { storage, db } from "../services/firebaseService";
 import { doc, updateDoc } from "firebase/firestore";
 import { apiService } from '../services/apiService';
 import type { UserData, InsulinRatioSegment } from '../types';
 
+import AILongTermMemory from './AILongTermMemory';
+import ClinicalSettingsEditor from './ClinicalSettingsEditor';
 import ActivityLevelSelector from './auth/ActivityLevelSelector';
 import ClinicalGoalsSelector from './auth/ClinicalGoalsSelector';
 
@@ -90,173 +94,242 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ currentUser, onUpdateUser }) =>
   };
 
   return (
-    <div className="min-h-screen bg-[#F2F2F7] pb-32">
-      <header className="bg-white pt-16 pb-10 px-6 rounded-b-[3.5rem] shadow-sm relative overflow-hidden">
-        <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-blue-500 to-green-500 opacity-50"></div>
-        <div className="flex flex-col items-center">
-          <div className="relative">
-            <div className="relative w-32 h-32 rounded-[2.5rem] overflow-hidden border-4 border-white shadow-2xl bg-slate-100 flex items-center justify-center">
-              {isUploading ? (
-                <Loader2 className="animate-spin text-blue-500" size={32} />
-              ) : currentUser?.photoURL ? (
-                <img src={currentUser.photoURL} alt="Bio-Profile" className="w-full h-full object-cover" />
-              ) : (
-                <User size={48} className="text-slate-300" />
-              )}
+    <div className="min-h-screen bg-[#FBFBFE] pb-40">
+      {/* HEADER PREMIUM */}
+      <header className="relative pt-20 pb-12 px-6 bg-white rounded-b-[4rem] shadow-[0_20px_50px_rgba(0,0,0,0.02)] overflow-hidden">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-blue-50 blur-[100px] rounded-full -mr-32 -mt-32 opacity-60" />
+        
+        <div className="relative flex flex-col items-center">
+          <motion.div 
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="relative"
+          >
+            <div className="w-32 h-32 rounded-[3rem] p-1 bg-gradient-to-tr from-blue-500 to-emerald-400 shadow-2xl">
+              <div className="w-full h-full rounded-[2.8rem] bg-white overflow-hidden flex items-center justify-center border-4 border-white">
+                {isUploading ? (
+                  <Loader2 className="animate-spin text-blue-500" size={32} />
+                ) : currentUser?.photoURL ? (
+                  <img src={currentUser.photoURL} alt="Bio-Profile" className="w-full h-full object-cover" />
+                ) : (
+                  <User size={48} className="text-slate-200" />
+                )}
+              </div>
             </div>
-            <label className="absolute -bottom-2 -right-2 bg-slate-900 text-white p-3 rounded-2xl shadow-xl border-2 border-white cursor-pointer active:scale-90 transition-transform">
-              <Camera size={18} />
+            <label className="absolute -bottom-2 -right-2 bg-slate-900 text-white p-3 rounded-2xl shadow-xl border-4 border-white cursor-pointer hover:scale-110 active:scale-90 transition-all">
+              <Camera size={18} strokeWidth={2.5} />
               <input type="file" className="hidden" onChange={handlePhotoChange} />
             </label>
-          </div>
-          <h2 className="mt-8 text-3xl font-[1000] tracking-tighter text-slate-900 italic uppercase">
-            {currentUser?.firstName || 'Usuario'} <span className="text-blue-600">PRO</span>
+          </motion.div>
+
+          <h2 className="mt-8 text-4xl font-[1000] tracking-tighter text-slate-900 italic uppercase leading-none">
+            {currentUser?.firstName || 'Usuario'} <span className="text-blue-600 italic">PRO</span>
           </h2>
-          <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-1">Metabolic Core Active</p>
+          
+          <div className="mt-4 inline-flex items-center gap-2 px-4 py-1.5 bg-slate-900 rounded-full shadow-lg shadow-blue-100">
+            <Fingerprint size={12} className="text-blue-400" />
+            <span className="text-[9px] font-black text-white uppercase tracking-[0.2em]">Bio-Core Identity Active</span>
+          </div>
         </div>
       </header>
 
-      <main className="px-6 mt-8 space-y-6">
-        <section className="space-y-3">
-          <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2">Calibración Bio-Core</p>
-          <div className="bg-white rounded-[2.5rem] p-2 shadow-sm border border-slate-100">
-            <div className="flex items-center justify-between p-4 bg-slate-50 rounded-[1.8rem] mb-2">
-              <div className="flex items-center gap-4">
-                <div className="bg-white p-3 rounded-2xl text-blue-600 shadow-sm">
-                  <Activity size={18} />
+      <main className="px-6 mt-10 space-y-10">
+        
+        {/* MEMORIA IA - ESTILO CARD APPLE */}
+        <section className="bg-white p-8 rounded-[3rem] border border-slate-50 shadow-[0_8px_30px_rgba(0,0,0,0.02)]">
+            <div className="flex items-center gap-3 mb-6">
+                <div className="p-2 bg-blue-50 text-blue-600 rounded-xl">
+                    <Sparkles size={20} />
                 </div>
-                <div>
-                  <p className="text-[8px] font-black text-slate-400 uppercase">Esfuerzo</p>
-                  <p className="text-xs font-bold text-slate-800 uppercase tracking-tighter">{currentUser.activityLevel || 'Sin definir'}</p>
-                </div>
-              </div>
-              <button onClick={() => setActiveModal('activity')} className="text-[9px] font-black text-blue-600 uppercase bg-white px-4 py-2 rounded-xl shadow-sm">Editar</button>
+                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Memoria Cognitiva IA</h3>
             </div>
-            <div className="flex items-center justify-between p-4 bg-slate-50 rounded-[1.8rem] mb-2">
-              <div className="flex items-center gap-4">
-                <div className="bg-white p-3 rounded-2xl text-green-600 shadow-sm">
-                  <Target size={18} />
-                </div>
-                <div>
-                  <p className="text-[8px] font-black text-slate-400 uppercase">Objetivos</p>
-                  <p className="text-xs font-bold text-slate-800 uppercase tracking-tighter">
-                    {currentUser.targetWeight || 70}kg | {currentUser.targetHba1c || 5.5}%
-                  </p>
-                </div>
-              </div>
-              <button onClick={() => setActiveModal('goals')} className="text-[9px] font-black text-blue-600 uppercase bg-white px-4 py-2 rounded-xl shadow-sm">Configurar</button>
-            </div>
-            <div className="flex items-center justify-between p-4 bg-slate-50 rounded-[1.8rem]">
-              <div className="flex items-center gap-4">
-                <div className="bg-white p-3 rounded-2xl text-red-500 shadow-sm">
-                  <Droplets size={18} />
-                </div>
-                <div>
-                  <p className="text-[8px] font-black text-slate-400 uppercase">Sistema</p>
-                  <p className="text-xs font-bold text-slate-800 uppercase">{currentUser.glucoseUnitPreference}</p>
-                </div>
-              </div>
-              <button onClick={() => setActiveModal('units')} className="text-[9px] font-black text-blue-600 uppercase bg-white px-4 py-2 rounded-xl shadow-sm">Cambiar</button>
-            </div>
+            <AILongTermMemory currentUser={currentUser} />
+        </section>
+
+        {/* CALIBRACIÓN DEL SISTEMA */}
+        <section className="space-y-6">
+          <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] ml-4">Parámetros de Calibración</h3>
+          <div className="bg-white rounded-[3rem] border border-slate-50 shadow-[0_8px_30px_rgba(0,0,0,0.02)] overflow-hidden">
+            <SettingsRow 
+              icon={<Activity className="text-blue-600" />} 
+              label="Esfuerzo Diario" 
+              value={currentUser.activityLevel || 'Sin definir'} 
+              onClick={() => setActiveModal('activity')} 
+            />
+            <SettingsRow 
+              icon={<Target className="text-emerald-500" />} 
+              label="Objetivos Clínicos" 
+              value={`${currentUser.targetWeight || 70}kg • ${currentUser.targetHba1c || 5.5}%`} 
+              onClick={() => setActiveModal('goals')} 
+            />
+            <SettingsRow 
+              icon={<Droplets className="text-rose-500" />} 
+              label="Unidades Médicas" 
+              value={currentUser.glucoseUnitPreference} 
+              onClick={() => setActiveModal('units')} 
+              isLast
+            />
           </div>
         </section>
 
-        <section className="space-y-4">
-          <div className="flex items-center justify-between px-2">
-            <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Ratios Clínicos</p>
+        {/* EDITOR CLÍNICO */}
+        <section className="bg-white p-8 rounded-[3rem] border border-slate-50 shadow-[0_8px_30px_rgba(0,0,0,0.02)]">
+           <ClinicalSettingsEditor 
+              currentUser={currentUser} 
+              onUpdate={(updates) => onUpdateUser(updates)} 
+           />
+        </section>
+
+        {/* RATIOS METABÓLICOS */}
+        <section className="space-y-6">
+          <div className="flex items-center justify-between px-4">
+            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Cronología de Ratios</h3>
             <Scale size={16} className="text-slate-300" />
           </div>
-          <div className="bg-white rounded-[2.5rem] p-2 shadow-sm border border-slate-100">
+          <div className="bg-white rounded-[3.5rem] p-4 border border-slate-50 shadow-[0_8px_30px_rgba(0,0,0,0.02)]">
             {ratios.map((segment, index) => (
               <div 
                 key={index} 
-                className={`flex items-center justify-between p-5 ${index !== ratios.length - 1 ? 'border-b border-slate-50' : ''}`}
+                className={`flex items-center justify-between p-6 ${index !== ratios.length - 1 ? 'border-b border-slate-50' : ''}`}
               >
                 <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-blue-600">
-                    <Clock size={18} />
+                  <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-blue-600 border border-slate-100">
+                    <Clock size={20} />
                   </div>
-                  <span className="text-xs font-black text-slate-800 uppercase tracking-widest">{segment.startTime}</span>
+                  <div>
+                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Inicio Segmento</p>
+                    <span className="text-lg font-black text-slate-900 italic tracking-tighter">{segment.startTime}</span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-3 bg-slate-50 p-1.5 rounded-2xl">
+                <div className="flex items-center gap-3 bg-slate-50 p-2 rounded-2xl border border-slate-100">
                   <input 
                     type="number"
                     value={segment.ratio}
                     onChange={(e) => updateRatio(index, e.target.value)}
-                    className="w-14 bg-white border-none rounded-xl py-2 text-center font-black text-blue-600 shadow-sm outline-none"
+                    className="w-16 bg-white border-none rounded-xl py-3 text-center font-black text-blue-600 shadow-sm outline-none text-xl"
                   />
-                  <span className="text-[9px] font-black text-slate-400 uppercase mr-2">grs</span>
+                  <span className="text-[10px] font-black text-slate-400 uppercase mr-3 italic">g/ui</span>
                 </div>
               </div>
             ))}
           </div>
         </section>
 
-        <button 
-          onClick={saveClinicalConfig}
-          disabled={isSaving}
-          className="w-full bg-slate-900 text-white p-6 rounded-[2.5rem] font-black uppercase text-[10px] tracking-[0.2em] shadow-xl flex items-center justify-center gap-3 disabled:opacity-50"
-        >
-          {isSaving ? <Loader2 className="animate-spin" /> : <><ShieldCheck size={18} className="text-green-500" /> Sincronizar Bio-Core</>}
-        </button>
+        {/* BOTONES DE ACCIÓN */}
+        <div className="space-y-4 pt-6">
+            <button 
+                onClick={saveClinicalConfig}
+                disabled={isSaving}
+                className="group relative w-full bg-slate-900 text-white p-6 rounded-[2.5rem] font-black uppercase text-[11px] tracking-[0.3em] overflow-hidden transition-all hover:scale-[1.02] active:scale-95 shadow-2xl shadow-blue-200"
+            >
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-emerald-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+                <span className="relative flex items-center justify-center gap-3">
+                    {isSaving ? <Loader2 className="animate-spin" /> : <><ShieldCheck size={20} className="text-blue-400" /> Sincronizar Bio-Core</>}
+                </span>
+            </button>
 
-        <button 
-          onClick={() => apiService.logout()}
-          className="w-full flex items-center justify-center gap-2 p-5 text-red-500 font-black text-[10px] uppercase tracking-widest rounded-[2rem] active:bg-red-50 transition-colors"
-        >
-          <LogOut size={16} /> Finalizar Sesión
-        </button>
+            <button 
+                onClick={() => apiService.logout()}
+                className="w-full flex items-center justify-center gap-3 p-6 text-rose-500 font-black text-[11px] uppercase tracking-[0.3em] rounded-[2.5rem] border border-transparent hover:bg-rose-50 transition-all"
+            >
+                <LogOut size={18} /> Finalizar Sesión Segura
+            </button>
+        </div>
       </main>
 
-      {activeModal && (
-        <div className="fixed inset-0 z-[200] flex items-end justify-center">
-          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md" onClick={() => setActiveModal(null)} />
-          <div className="relative w-full max-w-lg bg-white rounded-t-[3.5rem] p-8 shadow-2xl pb-12">
-            <div className="w-12 h-1.5 bg-slate-100 rounded-full mx-auto mb-8" />
-            <div className="flex justify-between items-center mb-8">
-              <h3 className="text-xl font-[1000] text-slate-900 uppercase italic tracking-tighter">
-                {activeModal === 'activity' && 'Bio-Actividad'}
-                {activeModal === 'units' && 'Sistema de Medida'}
-                {activeModal === 'goals' && 'Metas Clínicas'}
-              </h3>
-              <button onClick={() => setActiveModal(null)} className="p-2 bg-slate-50 rounded-full text-slate-400"><X size={20} /></button>
-            </div>
-            {activeModal === 'activity' && (
-              <div className="max-h-[60vh] overflow-y-auto pr-2">
-                <ActivityLevelSelector selectedId={currentUser.activityLevel} onSelect={handleUpdateActivity} />
+      {/* FOOTER */}
+      <footer className="py-20 text-center opacity-30">
+        <Zap size={20} fill="currentColor" className="mx-auto mb-4 text-slate-400" />
+        <p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.6em]">Vitametra Engine v4.2.0 • 2026</p>
+      </footer>
+
+      {/* MODAL ESTILO APPLE (BOTTON SHEET) */}
+      <AnimatePresence>
+        {activeModal && (
+          <div className="fixed inset-0 z-[2000] flex items-end justify-center">
+            <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="absolute inset-0 bg-slate-900/40 backdrop-blur-xl" 
+                onClick={() => setActiveModal(null)} 
+            />
+            <motion.div 
+                initial={{ y: "100%" }}
+                animate={{ y: 0 }}
+                exit={{ y: "100%" }}
+                transition={{ type: "spring", damping: 25, stiffness: 200 }}
+                className="relative w-full max-w-lg bg-white rounded-t-[4rem] p-10 shadow-2xl pb-16"
+            >
+              <div className="w-16 h-1.5 bg-slate-100 rounded-full mx-auto mb-10" />
+              
+              <div className="flex justify-between items-center mb-10">
+                <h3 className="text-2xl font-[1000] text-slate-900 uppercase italic tracking-tighter">
+                  {activeModal === 'activity' && 'Bio-Actividad'}
+                  {activeModal === 'units' && 'Sistema Médica'}
+                  {activeModal === 'goals' && 'Metas Clínicas'}
+                </h3>
+                <button onClick={() => setActiveModal(null)} className="p-3 bg-slate-50 rounded-full text-slate-400 hover:text-slate-900 transition-colors">
+                    <X size={24} strokeWidth={3} />
+                </button>
               </div>
-            )}
-            {activeModal === 'units' && (
-              <div className="grid gap-4">
-                {['mg/dL', 'mmol/L'].map((u) => (
-                  <button
-                    key={u}
-                    onClick={() => handleUpdateUnits(u as any)}
-                    className={`p-6 rounded-[2rem] border-2 flex justify-between items-center transition-all ${
-                      currentUser.glucoseUnitPreference === u 
-                      ? 'bg-blue-600 border-blue-600 text-white shadow-lg' 
-                      : 'bg-slate-50 border-transparent text-slate-800'
-                    }`}
-                  >
-                    <span className="font-black uppercase tracking-widest">{u}</span>
-                    {currentUser.glucoseUnitPreference === u && <Shield size={20} />}
-                  </button>
-                ))}
+
+              <div className="max-h-[60vh] overflow-y-auto custom-scrollbar">
+                {activeModal === 'activity' && (
+                  <ActivityLevelSelector selectedId={currentUser.activityLevel} onSelect={handleUpdateActivity} />
+                )}
+                {activeModal === 'units' && (
+                  <div className="grid gap-4">
+                    {['mg/dL', 'mmol/L'].map((u) => (
+                      <button
+                        key={u}
+                        onClick={() => handleUpdateUnits(u as any)}
+                        className={`p-8 rounded-[2.5rem] border-2 flex justify-between items-center transition-all ${
+                          currentUser.glucoseUnitPreference === u 
+                          ? 'bg-blue-600 border-blue-600 text-white shadow-xl scale-[1.02]' 
+                          : 'bg-slate-50 border-transparent text-slate-800 hover:bg-slate-100'
+                        }`}
+                      >
+                        <span className="font-black text-lg uppercase tracking-widest">{u}</span>
+                        {currentUser.glucoseUnitPreference === u && <ShieldCheck size={24} />}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {activeModal === 'goals' && (
+                  <ClinicalGoalsSelector 
+                    targetWeight={currentUser.targetWeight || 70}
+                    targetHba1c={currentUser.targetHba1c || 5.5}
+                    onUpdate={handleUpdateGoals}
+                    unit={currentUser.glucoseUnitPreference}
+                  />
+                )}
               </div>
-            )}
-            {activeModal === 'goals' && (
-              <ClinicalGoalsSelector 
-                targetWeight={currentUser.targetWeight || 70}
-                targetHba1c={currentUser.targetHba1c || 5.5}
-                onUpdate={handleUpdateGoals}
-                unit={currentUser.glucoseUnitPreference}
-              />
-            )}
+            </motion.div>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
     </div>
   );
 };
+
+// COMPONENTE DE FILA DE AJUSTES
+const SettingsRow = ({ icon, label, value, onClick, isLast }: any) => (
+    <button 
+        onClick={onClick}
+        className={`w-full flex items-center justify-between p-7 hover:bg-slate-50 transition-all ${!isLast ? 'border-b border-slate-50' : ''}`}
+    >
+        <div className="flex items-center gap-5">
+            <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-sm border border-slate-50">
+                {React.cloneElement(icon, { size: 20 })}
+            </div>
+            <div className="text-left">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{label}</p>
+                <p className="text-sm font-extrabold text-slate-800 uppercase tracking-tight">{value}</p>
+            </div>
+        </div>
+        <ChevronRight size={20} className="text-slate-200" />
+    </button>
+);
 
 export default ProfileTab;

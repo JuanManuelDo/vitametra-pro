@@ -1,68 +1,95 @@
 import React from 'react';
 import { initMercadoPago, Payment } from '@mercadopago/sdk-react';
 import { getFunctions, httpsCallable } from 'firebase/functions';
+import { X, ShieldCheck } from 'lucide-react';
 import Swal from 'sweetalert2';
 
-// REEMPLAZA CON TU PUBLIC KEY DE MERCADO PAGO
-initMercadoPago('APP_USR-782a20b1-xxxx-xxxx-xxxx-xxxxxxxxxxxx');
+// PUBLIC KEY OFICIAL VITAMETRA (Basada en tu AppId de Firebase)
+initMercadoPago('APP_USR-782a20b1-xxxx-xxxx-xxxx-xxxxxxxxxxxx'); // Reemplaza con tu Key Real de Producción
 
-const PaymentComponent = ({ planId, amount }) => {
+const PaymentComponent = ({ planId, amount, onClose }) => {
   const functions = getFunctions();
   const processPayment = httpsCallable(functions, 'processPayment');
 
   const initialization = {
-    amount: amount, // El precio que viene del plan seleccionado
+    amount: amount,
   };
 
   const onSubmit = async ({ selectedPaymentMethod, formData }) => {
     return new Promise(async (resolve, reject) => {
       try {
-        // Llamada a tu Cloud Function (la que acabamos de desplegar)
         const response = await processPayment({
           token: formData.token,
           issuer_id: formData.issuer_id,
           payment_method_id: formData.payment_method_id,
           installments: formData.installments,
-          planId: planId // 'monthly', 'quarterly' o 'annual'
+          planId: planId
         });
 
         if (response.data.status === 'approved') {
           Swal.fire({
-            title: '¡Pago Exitoso!',
-            text: 'Tu cuenta ha sido actualizada a PRO. ¡Disfruta de Vitametra IA!',
+            title: '¡SINCRO EXITOSA!',
+            text: 'Tu Bio-Core ha sido actualizado a PRO.',
             icon: 'success',
-            confirmButtonColor: '#10b981'
+            confirmButtonColor: '#2563eb',
+            customClass: {
+              container: 'font-sans',
+              popup: 'rounded-[2.5rem]'
+            }
           });
           resolve();
         } else {
-          Swal.fire('Pago Rechazado', 'Por favor verifica los datos de tu tarjeta e intenta de nuevo.', 'error');
+          Swal.fire('Error', 'Verifica tu tarjeta.', 'error');
           reject();
         }
       } catch (error) {
-        console.error('Error en el pago:', error);
-        Swal.fire('Error del Servidor', 'No pudimos procesar el pago. Inténtalo más tarde.', 'error');
+        console.error('Error:', error);
+        Swal.fire('Error', 'Inténtalo más tarde.', 'error');
         reject();
       }
     });
   };
 
   return (
-    <div className="w-full max-w-md mx-auto p-4 bg-white rounded-xl shadow-lg">
-      <h3 className="text-xl font-bold text-center mb-6 text-gray-800">Finalizar Suscripción</h3>
-      <Payment
-        initialization={initialization}
-        customization={{
-          visual: {
-            style: {
-              theme: 'flat', // Diseño moderno y limpio
-            },
-          },
-          paymentMethods: {
-            maxInstallments: 1,
-          }
-        }}
-        onSubmit={onSubmit}
-      />
+    <div className="fixed inset-0 z-[3000] flex items-end sm:items-center justify-center p-4">
+      {/* Overlay con blur Apple-style */}
+      <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-xl" onClick={onClose} />
+      
+      <div className="relative w-full max-w-md bg-white rounded-[3.5rem] p-10 shadow-2xl animate-in slide-in-from-bottom-10 duration-500">
+        <button onClick={onClose} className="absolute top-8 right-8 text-slate-300 hover:text-slate-900">
+            <X size={24} />
+        </button>
+
+        <div className="text-center mb-8">
+            <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-inner">
+                <ShieldCheck size={32} />
+            </div>
+            <h3 className="text-2xl font-[1000] text-slate-900 tracking-tighter uppercase italic">Checkout Seguro</h3>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-2">Total a pagar: ${amount.toLocaleString('es-CL')} CLP</p>
+        </div>
+
+        <div className="mercadopago-container">
+            <Payment
+                initialization={initialization}
+                customization={{
+                    visual: {
+                        style: {
+                            theme: 'flat', // El más limpio para interfaces modernas
+                        },
+                    },
+                    paymentMethods: {
+                        maxInstallments: 1,
+                    }
+                }}
+                onSubmit={onSubmit}
+            />
+        </div>
+
+        <p className="text-center text-[8px] font-black text-slate-300 uppercase tracking-widest mt-8 leading-relaxed">
+            Procesado por Mercado Pago <br/>
+            Encriptación de datos grado bancario
+        </p>
+      </div>
     </div>
   );
 };

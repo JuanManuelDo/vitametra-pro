@@ -1,100 +1,68 @@
 export type UserRole = 'ADMIN_INSTITUCIONAL' | 'USER' | 'FOUNDER';
 export type DiabetesType = 'Type 1' | 'Type 2' | 'LADA' | 'Gestational';
-export type InsulinTherapy = 'Pen/Syringe' | 'Insulin Pump';
-export type CarbUnit = 'grams' | 'exchanges';
-export type UserGender = 'MASCULINO' | 'FEMENINO' | 'NEUTRO';
-export type MealType = 'desayuno' | 'almuerzo' | 'cena' | 'snack-manana' | 'snack-tarde' | 'snack-noche' | 'snack-deportivo';
+export type MealType = 'desayuno' | 'almuerzo' | 'cena' | 'snack';
 
-export interface GlucoseRanges {
-  targetMin: number;
-  targetMax: number;
-  veryHigh: number;
-  veryLow: number;
-}
-
-// NUEVO: Segmento de Ratio por Horario para precisión médica
 export interface InsulinRatioSegment {
-  startTime: string; // Formato "HH:mm"
-  ratio: number;     // Gramos de carbos por 1 unidad de insulina
+  startTime: string; // Ej: "08:00"
+  ratio: number;    // Relación Insulina:Carbohidratos
 }
 
-export interface ClinicalConfiguration {
-  diabetesType: DiabetesType;
-  insulinToCarbRatio: number; // Ratio base por defecto
-  insulinSensitivityFactor: number;
-  targetGlucose: number;
-  glucoseRanges: GlucoseRanges;
-  // NUEVO: Horarios dinámicos
-  insulinRatioSchedule?: InsulinRatioSegment[]; 
+// --- CONFIGURACIÓN CLÍNICA ---
+export interface ClinicalConfig {
+  diabetesType?: DiabetesType;
+  insulinSensitivityFactor: number; // ISF: Cuánto baja la glucosa 1 unidad de insulina
+  targetGlucose: number;           // Glucosa objetivo (ej: 100 mg/dL)
+  weight?: number;
+  lastHba1c?: number;
+}
+
+// --- MEMORIA A LARGO PLAZO (NUEVO) ---
+// Esta interfaz almacena el "aprendizaje" complejo que la IA hace sobre el usuario
+export interface LongTermMemory {
+  patterns: {
+    highGlucoseTriggers: string[]; // Ej: ["Arroz blanco", "Estrés laboral"]
+    effectiveCorrections: string[]; // Ej: ["Caminata 20min", "Té verde"]
+    notableEvents: string[];       // Hitos: "Cambio de bomba de insulina en 2025"
+  };
+  preferences: {
+    dietaryRestrictions: string[]; // Ej: ["Vegano", "Sin Gluten"]
+    favoriteSafeFoods: string[];   // Alimentos con bajo impacto glucémico probado
+  };
+  aiNotes: string; // Espacio donde el Agente IA escribe sus deducciones
 }
 
 export interface FoodItem {
   food: string;
   totalCarbs: number;
-  category: 'base' | 'complemento' | 'fibra_proteina';
-  fiber: number;
-  protein: number;
-  fat: number;
-  calories: number;
+  category: string;
 }
 
 export interface AnalysisResult {
   items: FoodItem[];
   totalCarbs: number;
-  totalFiber: number;
-  netCarbs: number;
-  glycemicIndex: 'alto' | 'medio' | 'bajo';
+  glycemicIndex: string;
   glycemicLoad: number;
-  glucoseRiseEstimate: number;
   optimizationTip: string;
-  metabolicExplanation: string;
+  aiContextualNote?: string; // Nota generada por la memoria
 }
 
-/**
- * VITAMETRA 2026 - NÚCLEO DE APRENDIZAJE IA
- * Guardamos el contexto completo para entrenar el modelo con cada comida.
- */
 export interface HistoryEntry {
   id: string;
   userId: string;
-  date: string; 
-  createdAt: any; 
+  date: string;
+  createdAt: any;
   mealType: MealType;
-  userInput: string; // Lo que el usuario escribió o dictó
-  foodName?: string;
-  imageUrl?: string; // Foto del plato analizado
-  items: FoodItem[];
+  userInput: string;
   totalCarbs: number;
-  
-  // --- Datos de Tratamiento al momento del registro ---
-  bloodGlucoseValue?: number; // Glucemia PRE-comida
-  recommendedInsulinUnits?: number; // Lo que sugirió la IA
-  finalInsulinUnits?: number; // Lo que el usuario se inyectó realmente
-  ratioUsed?: number; // El ratio (I:C) activo en ese horario
-
-  // --- Feedback para aprendizaje de IA (Calibración) ---
-  glucosePost2h?: number; // Glucemia 2 horas después (Ingresada en calibración)
-  glucoseImpact?: number; // Diferencia (Post - Pre)
-  wasCorrectionNeeded?: boolean;
-  aiAccuracyScore?: number; // 0 a 100 (Cálculo interno de precisión)
-  isCalibrated: boolean; // Si ya pasó por el proceso de calibración
+  bloodGlucoseValue?: number;
+  finalInsulinUnits?: number;
+  isCalibrated: boolean;
+  // Metadata de contexto
+  mood?: string;
+  physicalActivityLevel?: 'bajo' | 'medio' | 'alto';
 }
 
-// NUEVO: Estructura para Reportes Clínicos (Lo que recibe el médico)
-export interface PatientClinicalSummary {
-  patientName: string;
-  dateRange: { from: string; to: string };
-  diabetesType: string;
-  eHbA1c: number; // Hemoglobina Glicosilada Estimada por IA
-  timeInRange: number; // % de tiempo entre 70-180 mg/dL
-  meanGlucose: number;
-  standardDeviation: number; // Variabilidad glucémica
-  hypoEvents: number; // Eventos detectados por debajo del rango
-  hyperEvents: number; // Eventos detectados por encima del rango
-  aiInsights: string[]; // Sugerencias generadas para el doctor
-  totalCarbsConsumed: number;
-}
-
+// --- USERDATA ACTUALIZADO PARA DESPLIEGUE ---
 export interface UserData {
   id: string;
   firstName: string;
@@ -103,11 +71,31 @@ export interface UserData {
   role: UserRole;
   subscription_tier: 'BASE' | 'PRO';
   ia_credits: number;
-  clinicalConfig?: ClinicalConfiguration;
-  // NUEVO: Soporte para ratios horarios en el perfil
-  insulinRatioSchedule?: InsulinRatioSegment[];
+  daily_ia_usage: number;
   createdAt: string;
-  premium_until?: string;
-  // Sensibilidad metabólica dinámica calculada por la IA tras calibraciones
-  metabolic_sensitivity_index?: number; 
+  defaultBasalDose?: number;
+  streak: number; 
+  photoURL?: string; // Para el avatar de perfil
+  
+  // Extensiones para la calibración médica y memoria
+  insulinRatioSchedule?: InsulinRatioSegment[];
+  clinicalConfig?: ClinicalConfig; 
+  
+  // NUEVO: aiMemory como string plano para edición rápida en perfil
+  aiMemory?: string; 
+  
+  // memory para la estructura de datos compleja (objetos)
+  memory?: LongTermMemory; 
+
+  // Ajustes adicionales de usuario
+  activityLevel?: string;
+  targetWeight?: number;
+  targetHba1c?: number;
+  glucoseUnitPreference?: 'mg/dL' | 'mmol/L';
+}
+
+export interface Hba1cEntry {
+  id: string;
+  date: string;
+  value: number;
 }

@@ -1,16 +1,13 @@
 import React, { useState } from 'react';
 import { 
-  ChevronRight, 
   ChevronLeft, 
-  ShieldCheck, 
   Activity, 
   Target, 
-  User, 
   ArrowRight,
   Lock,
-  Waves // Cambiado por Wave para representar el "Flow"
+  Waves
 } from 'lucide-react';
-import Spinner from './ui/Spinner';
+import Spinner from '../components/ui/Spinner';
 import { apiService } from '../services/apiService';
 import type { UserData, DiabetesType } from '../types';
 import { useNavigate } from 'react-router-dom';
@@ -37,7 +34,15 @@ const RegisterTab: React.FC<RegisterTabProps> = ({ onLoginSuccess }) => {
         targetGlucose: 110
     });
 
-    const nextStep = () => setStep(s => s + 1);
+    const nextStep = () => {
+        if (step === 1 && (!formData.firstName || !formData.email || !formData.password)) {
+            setErrorMsg("Completa los datos de acceso.");
+            return;
+        }
+        setErrorMsg(null);
+        setStep(s => s + 1);
+    };
+
     const prevStep = () => setStep(s => s - 1);
 
     const handleFinalRegister = async (e: React.FormEvent) => {
@@ -46,28 +51,46 @@ const RegisterTab: React.FC<RegisterTabProps> = ({ onLoginSuccess }) => {
         setErrorMsg(null);
         
         try {
-            const newUser = await apiService.register(formData.email, formData.password);
+            const userCredential = await apiService.register(
+                formData.email, 
+                formData.password, 
+                formData.firstName
+            );
             
-            const userProfile: Partial<UserData> = {
+            const uid = userCredential.user.uid;
+
+            const completeProfile: UserData = {
+                id: uid,
                 firstName: formData.firstName,
+                lastName: "",
+                email: formData.email.toLowerCase().trim(),
+                role: 'USER',
+                subscription_tier: 'BASE',
+                ia_credits: 3,
+                daily_ia_usage: 0,
+                streak: 0,
+                createdAt: new Date().toISOString(),
+                insulinRatioSchedule: [
+                    { startTime: "08:00", ratio: Number(formData.ratio) }
+                ],
                 clinicalConfig: {
                     diabetesType: formData.diabetesType,
-                    insulinToCarbRatio: Number(formData.ratio),
                     insulinSensitivityFactor: Number(formData.isf),
-                    targetGlucose: Number(formData.targetGlucose),
-                    glucoseRanges: { targetMin: 70, targetMax: 160, veryHigh: 250, veryLow: 54 },
-                    mealSchedule: []
-                } as any,
-                userRegion: formData.country,
-                subscription_tier: 'BASE',
-                createdAt: new Date().toISOString()
+                    targetGlucose: Number(formData.targetGlucose)
+                },
+                memory: {
+                    patterns: { highGlucoseTriggers: [], effectiveCorrections: [], notableEvents: [] },
+                    preferences: { dietaryRestrictions: [], favoriteSafeFoods: [] },
+                    aiNotes: "Protocolo VitaFlow activado. Esperando primeros datos."
+                }
             };
 
-            await apiService.updateHistoryEntry(newUser.user.uid, userProfile as any);
-            if (onLoginSuccess) onLoginSuccess(userProfile as any);
-            navigate('/');
+            await apiService.updateUser(completeProfile);
+            if (onLoginSuccess) onLoginSuccess(completeProfile);
+            setTimeout(() => navigate('/dashboard'), 500);
+
         } catch (error: any) {
-            setErrorMsg("Error en la sincronización del flujo. Intenta de nuevo.");
+            setErrorMsg(error.message || "Error al activar el perfil.");
             setStep(1);
         } finally {
             setIsSubmitting(false);
@@ -83,51 +106,48 @@ const RegisterTab: React.FC<RegisterTabProps> = ({ onLoginSuccess }) => {
             </div>
 
             <div className="max-w-xl mx-auto">
+                {errorMsg && (
+                    <div className="mb-4 p-4 bg-red-50 border border-red-100 text-red-600 rounded-2xl text-xs font-bold text-center animate-bounce">
+                        {errorMsg}
+                    </div>
+                )}
+
                 {step === 1 && (
-                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <div className="animate-in fade-in slide-in-from-bottom-4">
                         <div className="text-center mb-8">
                             <div className="w-20 h-20 bg-white rounded-[2.5rem] shadow-xl flex items-center justify-center mx-auto mb-6">
                                 <Waves className="text-blue-600" size={32} />
                             </div>
-                            <h1 className="text-4xl font-[1000] tracking-tighter italic uppercase">Inicia tu <span className="text-blue-600">VitaFlow</span></h1>
-                            <p className="text-slate-400 font-bold text-[10px] uppercase tracking-[0.2em] mt-2">Personalización de Ecosistema</p>
+                            <h1 className="text-4xl font-[1000] tracking-tighter italic uppercase">Vita<span className="text-blue-600">Flow</span></h1>
                         </div>
-
-                        <div className="bg-white p-8 rounded-[3rem] shadow-2xl border border-white space-y-5">
-                            <input value={formData.firstName} onChange={e => setFormData({...formData, firstName: e.target.value})} className="w-full p-5 bg-slate-50 border-none rounded-2xl font-bold text-sm outline-none focus:ring-4 focus:ring-blue-100 transition-all" placeholder="Tu Nombre" />
-                            <input value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} className="w-full p-5 bg-slate-50 border-none rounded-2xl font-bold text-sm outline-none focus:ring-4 focus:ring-blue-100 transition-all" placeholder="Email" />
-                            <input type="password" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} className="w-full p-5 bg-slate-50 border-none rounded-2xl font-bold text-sm outline-none focus:ring-4 focus:ring-blue-100 transition-all" placeholder="Contraseña" />
+                        <div className="bg-white p-8 rounded-[3rem] shadow-2xl space-y-5">
+                            <input value={formData.firstName} onChange={e => setFormData({...formData, firstName: e.target.value})} className="w-full p-5 bg-slate-50 rounded-2xl font-bold text-sm outline-none" placeholder="Tu Nombre" />
+                            <input value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} className="w-full p-5 bg-slate-50 rounded-2xl font-bold text-sm outline-none" placeholder="Email" />
+                            <input type="password" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} className="w-full p-5 bg-slate-50 rounded-2xl font-bold text-sm outline-none" placeholder="Contraseña" />
                             <button onClick={nextStep} className="w-full bg-black text-white p-6 rounded-[2rem] font-black uppercase text-[11px] tracking-widest flex items-center justify-center gap-3">
-                                Siguiente paso <ArrowRight size={18} />
+                                Siguiente <ArrowRight size={18} />
                             </button>
                         </div>
                     </div>
                 )}
 
                 {step === 2 && (
-                    <div className="animate-in fade-in slide-in-from-right-4 duration-500">
+                    <div className="animate-in fade-in slide-in-from-right-4">
                         <div className="text-center mb-8">
                             <div className="w-20 h-20 bg-blue-600 rounded-[2rem] shadow-xl flex items-center justify-center mx-auto mb-6 text-white">
                                 <Activity size={32} />
                             </div>
-                            <h2 className="text-3xl font-[1000] tracking-tighter italic uppercase text-slate-800">Calibración <span className="text-blue-600">Clínica</span></h2>
-                            <p className="text-slate-400 font-bold text-[10px] uppercase tracking-[0.2em] mt-2 text-center">Optimización del motor VitaFlow</p>
+                            <h2 className="text-3xl font-[1000] tracking-tighter italic uppercase">Calibración</h2>
                         </div>
-
-                        <div className="bg-white p-8 rounded-[3rem] shadow-2xl border border-white space-y-6">
-                            <div className="grid grid-cols-2 gap-4">
-                                <select value={formData.diabetesType} onChange={e => setFormData({...formData, diabetesType: e.target.value as any})} className="w-full p-4 bg-slate-50 border-none rounded-2xl font-bold text-xs outline-none">
-                                    <option value="Type 1">Tipo 1</option>
-                                    <option value="Type 2">Tipo 2</option>
-                                    <option value="LADA">LADA</option>
-                                </select>
-                                <select value={formData.country} onChange={e => setFormData({...formData, country: e.target.value})} className="w-full p-4 bg-slate-50 border-none rounded-2xl font-bold text-xs outline-none">
-                                    {COUNTRY_CODES.map(c => <option key={c.code} value={c.name}>{c.name}</option>)}
-                                </select>
-                            </div>
+                        <div className="bg-white p-8 rounded-[3rem] shadow-2xl space-y-6">
+                            <select value={formData.diabetesType} onChange={e => setFormData({...formData, diabetesType: e.target.value as any})} className="w-full p-4 bg-slate-50 rounded-2xl font-bold text-xs">
+                                <option value="Type 1">Tipo 1</option>
+                                <option value="Type 2">Tipo 2</option>
+                                <option value="LADA">LADA</option>
+                            </select>
                             <div>
-                                <label className="text-[9px] font-black uppercase text-slate-400 ml-4 mb-2 block tracking-widest text-center">Ratio Insulina/Carbos (1U : {formData.ratio}g)</label>
-                                <input type="range" min="1" max="50" value={formData.ratio} onChange={e => setFormData({...formData, ratio: parseInt(e.target.value)})} className="w-full accent-blue-600" />
+                                <label className="text-[9px] font-black uppercase text-slate-400 block mb-2 text-center tracking-widest">Ratio Insulina (1U : {formData.ratio}g Carbos)</label>
+                                <input type="range" min="1" max="40" value={formData.ratio} onChange={e => setFormData({...formData, ratio: parseInt(e.target.value)})} className="w-full accent-blue-600" />
                             </div>
                             <div className="flex gap-4">
                                 <button onClick={prevStep} className="p-6 bg-slate-100 rounded-[2rem] text-slate-400 font-black"><ChevronLeft size={20}/></button>
@@ -138,34 +158,24 @@ const RegisterTab: React.FC<RegisterTabProps> = ({ onLoginSuccess }) => {
                 )}
 
                 {step === 3 && (
-                    <div className="animate-in fade-in slide-in-from-right-4 duration-500">
+                    <div className="animate-in fade-in slide-in-from-right-4">
                         <div className="text-center mb-8">
                             <div className="w-20 h-20 bg-emerald-500 rounded-[2rem] shadow-xl flex items-center justify-center mx-auto mb-6 text-white">
                                 <Target size={32} />
                             </div>
-                            <h2 className="text-3xl font-[1000] tracking-tighter italic uppercase text-slate-800">Zona de <span className="text-emerald-500">Flow</span></h2>
-                            <p className="text-slate-400 font-bold text-[10px] uppercase tracking-[0.2em] mt-2">Objetivo glucémico inteligente</p>
+                            <h2 className="text-3xl font-[1000] tracking-tighter italic uppercase">Meta</h2>
                         </div>
-
-                        <div className="bg-white p-8 rounded-[3rem] shadow-2xl border border-white space-y-6">
-                            <div className="p-6 bg-slate-50 rounded-[2rem] text-center border border-dashed border-slate-200">
+                        <div className="bg-white p-8 rounded-[3rem] shadow-2xl space-y-6">
+                            <div className="p-6 bg-slate-50 rounded-[2rem] text-center">
                                 <input type="number" value={formData.targetGlucose} onChange={e => setFormData({...formData, targetGlucose: parseInt(e.target.value)})} className="w-full bg-transparent text-center text-5xl font-[1000] text-blue-600 outline-none" />
                                 <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">mg/dL Objetivo</span>
                             </div>
                             <button onClick={handleFinalRegister} disabled={isSubmitting} className="w-full bg-blue-600 text-white p-6 rounded-[2rem] font-[1000] uppercase text-[12px] tracking-widest shadow-xl shadow-blue-200">
                                 {isSubmitting ? <Spinner /> : "Activar mi VitaFlow"}
                             </button>
-                            <button onClick={prevStep} className="w-full text-slate-400 font-black text-[10px] uppercase tracking-widest text-center">Volver</button>
                         </div>
                     </div>
                 )}
-
-                <div className="mt-12 text-center">
-                    <div className="flex items-center justify-center gap-2 text-slate-300">
-                        <Lock size={12} />
-                        <span className="text-[8px] font-black uppercase tracking-widest">Protocolo de Seguridad VitaFlow Activo</span>
-                    </div>
-                </div>
             </div>
         </div>
     );

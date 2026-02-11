@@ -1,36 +1,35 @@
-
-import React, { useState, useMemo } from 'react'
-import type { UserData, HistoryEntry } from '../types'
-import { CheckCircleIcon, PlusIcon, BloodDropIcon, SyringeIcon, CalendarDaysIcon } from './ui/Icons'
-import { apiService } from '../services/apiService'
-import Spinner from './ui/Spinner'
+import React, { useState, useMemo } from 'react';
+import { 
+    CheckCircle2, Plus, Activity, Syringe, Calendar, 
+    ChevronRight, AlertCircle, Clock, Sparkles, X
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import type { UserData, HistoryEntry } from '../types';
+import { apiService } from '../services/apiService';
 
 interface SimplifiedHomeProps {
-    currentUser: UserData;
+    currentUser: UserData | null;
     history: HistoryEntry[];
 }
 
 const SimplifiedHome: React.FC<SimplifiedHomeProps> = ({ currentUser, history }) => {
     const [isLogModalOpen, setIsLogModalOpen] = useState(false);
     const [glucose, setGlucose] = useState('');
-    const [insulin, setInsulin] = useState(currentUser.defaultBasalDose?.toString() || '');
+    const [insulin, setInsulin] = useState('0');
     const [isSaving, setIsSaving] = useState(false);
 
-    // --- LOGIC: Check if task completed today ---
+    // --- LÓGICA DE CONTROL DIARIO ---
     const today = new Date().toISOString().split('T')[0];
     const todaysLog = useMemo(() => {
-        return history.find(entry => entry.date.startsWith(today) && entry.mealType === 'desayuno');
+        return history?.find(entry => entry.date.startsWith(today) && entry.mealType === 'desayuno');
     }, [history, today]);
 
-    const isCompleted = !!todaysLog;
-
-    // --- CHART DATA: Last 7 Days Fasting ---
+    // --- LÓGICA DE TENDENCIA ---
     const chartData = useMemo(() => {
-        // Filter last 7 days of 'desayuno' entries
         const sevenDaysAgo = new Date();
         sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
         
-        return history
+        return (history || [])
             .filter(e => new Date(e.date) >= sevenDaysAgo && e.mealType === 'desayuno' && e.bloodGlucoseValue)
             .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
             .map(e => ({
@@ -39,160 +38,193 @@ const SimplifiedHome: React.FC<SimplifiedHomeProps> = ({ currentUser, history })
             }));
     }, [history]);
 
+    if (!currentUser) return null;
+
+    // --- CORRECCIÓN DE ERROR (Línea 47-53) ---
     const handleSave = async () => {
-        if (!glucose) return;
+        if (!glucose || isSaving) return;
         setIsSaving(true);
         try {
-            const entry: any = {
-                id: `simple-${Date.now()}`,
+            // Se envía un solo objeto que incluye el userId según espera el apiService
+            await apiService.saveHistoryEntry({
                 userId: currentUser.id,
-                date: new Date().toISOString(),
-                mealType: 'desayuno', // Mapping "Fasting" to desayuno for consistency
-                userInput: 'Registro Diario Simplificado',
-                totalCarbs: 0,
-                items: [],
-                glycemicIndex: 'medio',
+                mealType: 'desayuno',
                 bloodGlucoseValue: parseFloat(glucose),
-                bloodGlucoseUnit: 'mg/dL',
-                finalInsulinUnits: insulin ? parseFloat(insulin) : undefined
-            };
-            await apiService.saveHistoryEntry(entry);
+                finalInsulinUnits: parseFloat(insulin),
+                userInput: "Registro manual matutino",
+                totalCarbs: 0,
+                isCalibrated: false,
+                date: new Date().toISOString()
+            });
             setIsLogModalOpen(false);
+            setGlucose('');
         } catch (error) {
-            alert("Error al guardar");
+            console.error("Error al guardar registro:", error);
         } finally {
             setIsSaving(false);
         }
     };
 
-    const adjustInsulin = (delta: number) => {
-        const current = parseFloat(insulin || '0');
-        const next = Math.max(0, current + delta);
-        setInsulin(next.toString());
-    };
-
     return (
-        <div className="max-w-md mx-auto p-4 animate-fade-in">
-            <h1 className="text-2xl font-bold text-slate-800 mb-6">Hola, {currentUser.firstName}</h1>
+        <div className="max-w-md mx-auto p-6 pb-32 min-h-screen bg-[#FBFBFE]">
+            {/* HEADER ESTILO APPLE HEALTH */}
+            <header className="mb-10 flex justify-between items-center">
+                <div>
+                    <h1 className="text-4xl font-[1000] text-slate-900 tracking-tight">Vitametra</h1>
+                    <p className="text-slate-400 text-sm font-bold uppercase tracking-widest mt-1">
+                        {new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric' })}
+                    </p>
+                </div>
+                <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-blue-600 to-blue-400 flex items-center justify-center text-white shadow-lg shadow-blue-200">
+                    <Activity size={24} />
+                </div>
+            </header>
 
-            {/* MAIN TASK CARD */}
-            <div className={`p-6 rounded-3xl shadow-lg transition-all duration-500 mb-8 border-2 ${isCompleted ? 'bg-green-50 border-green-200' : 'bg-white border-blue-100'}`}>
-                <div className="flex justify-between items-start mb-4">
-                    <div>
-                        <h2 className="text-lg font-bold text-slate-700">Tu Rutina de Hoy</h2>
-                        <p className="text-sm text-slate-500">Registro Matutino</p>
-                    </div>
-                    {isCompleted ? (
-                        <CheckCircleIcon className="w-10 h-10 text-green-500" />
-                    ) : (
-                        <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center">
-                            <span className="w-3 h-3 bg-orange-400 rounded-full animate-pulse"></span>
+            {/* CARD DE ESTADO METABÓLICO (Inspirado en Oura) */}
+            <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className={`relative overflow-hidden p-8 rounded-[3rem] border transition-all duration-700 mb-8 ${
+                    todaysLog 
+                    ? 'bg-emerald-50 border-emerald-100' 
+                    : 'bg-white border-slate-100 shadow-[0_10px_40px_-15px_rgba(0,0,0,0.08)]'
+                }`}
+            >
+                <div className="flex justify-between items-start mb-8">
+                    <div className="flex items-center gap-3">
+                        <div className={`p-3 rounded-2xl ${todaysLog ? 'bg-white' : 'bg-blue-50 text-blue-600'}`}>
+                            <Sparkles size={20} className={todaysLog ? 'text-emerald-500' : ''} />
                         </div>
-                    )}
+                        <div>
+                            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Estado Diario</p>
+                            <h2 className="font-extrabold text-slate-900 text-xl">Sintonía Glucémica</h2>
+                        </div>
+                    </div>
                 </div>
 
-                {isCompleted ? (
-                    <div className="text-center py-4">
-                        <p className="text-xl font-bold text-green-700">¡Todo listo por hoy!</p>
-                        <p className="text-sm text-green-600">Has registrado {todaysLog?.bloodGlucoseValue} mg/dL</p>
+                {todaysLog ? (
+                    <div className="flex items-end gap-10">
+                        <div>
+                            <p className="text-5xl font-black text-slate-900 tracking-tighter">
+                                {todaysLog.bloodGlucoseValue}
+                                <span className="text-sm font-bold text-slate-300 ml-2 uppercase tracking-widest">mg/dL</span>
+                            </p>
+                            <div className="mt-4 inline-flex items-center gap-2 px-3 py-1 bg-emerald-500 text-white rounded-full text-[10px] font-black uppercase">
+                                <CheckCircle2 size={12} /> Registro Completo
+                            </div>
+                        </div>
                     </div>
                 ) : (
-                    <button 
-                        onClick={() => setIsLogModalOpen(true)}
-                        className="w-full py-4 bg-brand-primary hover:bg-brand-dark text-white font-bold rounded-xl shadow-md transition-all transform hover:scale-[1.02] flex items-center justify-center gap-2"
-                    >
-                        <PlusIcon className="w-6 h-6" />
-                        Registrar Medición
-                    </button>
+                    <div className="space-y-6">
+                        <p className="text-slate-500 text-sm leading-relaxed font-medium">
+                            No has registrado tu medición en ayunas. Conecta tu metabolismo ahora.
+                        </p>
+                        <button 
+                            onClick={() => setIsLogModalOpen(true)}
+                            className="w-full py-5 bg-slate-900 text-white rounded-[2rem] font-black text-sm flex items-center justify-center gap-3 hover:bg-blue-600 hover:shadow-xl hover:shadow-blue-200 transition-all active:scale-95"
+                        >
+                            <Plus size={20} strokeWidth={3} /> REGISTRAR MEDICIÓN
+                        </button>
+                    </div>
                 )}
-            </div>
+            </motion.div>
 
-            {/* SIMPLE TREND CHART */}
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-                <h3 className="font-bold text-slate-700 mb-4 flex items-center gap-2">
-                    <CalendarDaysIcon className="w-5 h-5 text-brand-secondary" />
-                    Tendencia Semanal (Ayunas)
-                </h3>
+            {/* GRÁFICO DE TENDENCIAS (Minimalismo Apple) */}
+            <div className="bg-white p-8 rounded-[3rem] border border-slate-50 shadow-[0_8px_30px_rgb(0,0,0,0.02)]">
+                <div className="flex justify-between items-center mb-10">
+                    <h3 className="font-black text-slate-900 flex items-center gap-2 tracking-tight">
+                        <Calendar size={18} className="text-blue-600" /> Historial
+                    </h3>
+                    <ChevronRight size={18} className="text-slate-300" />
+                </div>
                 
                 {chartData.length > 0 ? (
-                    <div className="flex items-end justify-between h-40 pt-4 px-2 space-x-2">
+                    <div className="flex items-end justify-between h-40 gap-3">
                         {chartData.map((d, i) => (
-                            <div key={i} className="flex flex-col items-center flex-1 group">
-                                <div className="relative w-full flex justify-center">
-                                    <div 
-                                        className="w-3 bg-brand-primary/30 rounded-t-sm group-hover:bg-brand-primary transition-colors"
-                                        style={{ height: `${Math.min((d.val / 200) * 100, 100)}px` }}
-                                    ></div>
-                                    <span className="absolute -top-6 text-[10px] font-bold text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        {d.val}
-                                    </span>
+                            <div key={i} className="flex-1 flex flex-col items-center gap-4">
+                                <div className="w-full bg-slate-50 rounded-2xl relative flex items-end justify-center overflow-hidden h-full">
+                                    <motion.div 
+                                        initial={{ height: 0 }}
+                                        animate={{ height: `${Math.min((d.val / 250) * 100, 100)}%` }}
+                                        transition={{ duration: 1, ease: "easeOut" }}
+                                        className={`w-full rounded-t-xl ${
+                                            d.val > 180 ? 'bg-rose-400' : d.val < 70 ? 'bg-amber-400' : 'bg-blue-500'
+                                        }`}
+                                    />
                                 </div>
-                                <span className="text-[10px] text-slate-400 mt-2">{d.date}</span>
+                                <span className="text-[10px] font-black text-slate-300 uppercase">{d.date}</span>
                             </div>
                         ))}
                     </div>
                 ) : (
-                    <p className="text-center text-slate-400 text-sm py-8">Registra unos días para ver tu tendencia.</p>
+                    <div className="text-center py-12">
+                        <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <Activity className="text-slate-200" size={32} />
+                        </div>
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Esperando datos...</p>
+                    </div>
                 )}
             </div>
 
-            {/* MODAL SIMPLIFICADO */}
-            {isLogModalOpen && (
-                <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 relative">
-                        <h3 className="text-xl font-bold text-slate-800 mb-6 text-center">Registro del Día</h3>
-                        
-                        <div className="space-y-6">
-                            {/* Glucose Input */}
-                            <div>
-                                <label className="block text-sm font-bold text-slate-500 mb-2 uppercase flex items-center gap-2">
-                                    <BloodDropIcon className="w-4 h-4" /> Nivel de Azúcar
-                                </label>
-                                <input 
-                                    type="number" 
-                                    step="1"
-                                    value={glucose}
-                                    onChange={(e) => setGlucose(e.target.value)}
-                                    placeholder="Ej: 110"
-                                    className="w-full text-center text-4xl font-bold border-b-2 border-slate-200 focus:border-brand-primary outline-none py-2 text-brand-primary"
-                                    autoFocus
-                                />
-                                <p className="text-center text-xs text-slate-400 mt-1">mg/dL</p>
+            {/* MODAL ESTADO DEL ARTE (Inspirado en IA interfaces) */}
+            <AnimatePresence>
+                {isLogModalOpen && (
+                    <div className="fixed inset-0 z-[2000] flex items-end sm:items-center justify-center">
+                        <motion.div 
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setIsLogModalOpen(false)}
+                            className="absolute inset-0 bg-slate-900/40 backdrop-blur-xl"
+                        />
+                        <motion.div 
+                            initial={{ y: "100%" }}
+                            animate={{ y: 0 }}
+                            exit={{ y: "100%" }}
+                            className="relative bg-white rounded-t-[3.5rem] sm:rounded-[3.5rem] w-full max-w-md p-10 shadow-2xl overflow-hidden"
+                        >
+                            {/* Glow decorativo interior */}
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-100/50 blur-3xl rounded-full -mr-16 -mt-16" />
+                            
+                            <div className="flex justify-between items-center mb-10">
+                                <h3 className="text-2xl font-black text-slate-900 tracking-tighter">Entrada de Datos</h3>
+                                <button onClick={() => setIsLogModalOpen(false)} className="p-2 bg-slate-50 rounded-full text-slate-400"><X size={20}/></button>
                             </div>
 
-                            {/* Insulin Input (Pre-filled) */}
-                            <div>
-                                <label className="block text-sm font-bold text-slate-500 mb-2 uppercase flex items-center gap-2">
-                                    <SyringeIcon className="w-4 h-4" /> Dosis Insulina
-                                </label>
-                                <div className="flex items-center justify-center gap-4">
-                                    <button onClick={() => adjustInsulin(-0.5)} className="p-2 bg-slate-100 rounded-full hover:bg-slate-200 text-xl font-bold">-</button>
+                            <div className="space-y-10">
+                                <div className="text-center">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] block mb-4">Glucosa en mg/dL</label>
                                     <input 
-                                        type="number" 
-                                        step="0.1"
-                                        value={insulin}
-                                        onChange={(e) => setInsulin(e.target.value)}
-                                        className="w-24 text-center text-2xl font-bold border border-slate-200 rounded-lg py-2"
+                                        type="number" value={glucose} onChange={(e) => setGlucose(e.target.value)}
+                                        className="w-full text-7xl font-black text-center text-blue-600 bg-transparent outline-none placeholder:text-blue-50" 
+                                        placeholder="000" autoFocus
                                     />
-                                    <button onClick={() => adjustInsulin(0.5)} className="p-2 bg-slate-100 rounded-full hover:bg-slate-200 text-xl font-bold">+</button>
                                 </div>
-                                <p className="text-center text-xs text-slate-400 mt-1">Unidades (Paso de 0.5 UI)</p>
-                            </div>
-                        </div>
 
-                        <div className="grid grid-cols-2 gap-4 mt-8">
-                            <button onClick={() => setIsLogModalOpen(false)} className="py-3 rounded-xl text-slate-500 font-bold hover:bg-slate-50">Cancelar</button>
+                                <div className="bg-slate-50 p-8 rounded-[2.5rem] flex items-center justify-between border border-slate-100">
+                                    <div>
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Dosis Insulina</p>
+                                        <p className="text-xl font-extrabold text-slate-900 flex items-center gap-2">
+                                            <Syringe size={18} className="text-blue-500" /> {insulin} <span className="text-xs text-slate-400 uppercase">UI</span>
+                                        </p>
+                                    </div>
+                                    <div className="flex items-center gap-4">
+                                        <button onClick={() => setInsulin((prev) => Math.max(0, parseFloat(prev) - 0.5).toString())} className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center font-black text-xl shadow-sm border border-slate-100 active:scale-90">-</button>
+                                        <button onClick={() => setInsulin((prev) => (parseFloat(prev) + 0.5).toString())} className="w-12 h-12 bg-slate-900 text-white rounded-2xl flex items-center justify-center font-black text-xl shadow-lg active:scale-90">+</button>
+                                    </div>
+                                </div>
+                            </div>
+
                             <button 
-                                onClick={handleSave} 
-                                disabled={!glucose || isSaving}
-                                className="py-3 rounded-xl bg-brand-secondary text-white font-bold shadow-lg hover:bg-green-600 disabled:opacity-50 flex items-center justify-center"
+                                onClick={handleSave} disabled={!glucose || isSaving}
+                                className="w-full mt-10 bg-blue-600 text-white py-6 rounded-[2rem] font-black text-lg shadow-2xl shadow-blue-200 disabled:opacity-50 transition-all active:scale-95"
                             >
-                                {isSaving ? <Spinner /> : 'Guardar'}
+                                {isSaving ? 'Sincronizando...' : 'CONFIRMAR REGISTRO'}
                             </button>
-                        </div>
+                        </motion.div>
                     </div>
-                </div>
-            )}
+                )}
+            </AnimatePresence>
         </div>
     );
 };
