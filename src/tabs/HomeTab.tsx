@@ -30,7 +30,7 @@ const HomeTab: React.FC<HomeTabProps> = ({ currentUser, history = [], onStartCli
             className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-slate-50 border border-slate-200 mb-8"
           >
             <Sparkles size={14} className="text-blue-500" />
-            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Arquitectura de Inteligencia Metabólica</span>
+            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Inteligencia para la Diabetes</span>
           </motion.div>
 
           <motion.h1 
@@ -38,9 +38,9 @@ const HomeTab: React.FC<HomeTabProps> = ({ currentUser, history = [], onStartCli
             animate={{ opacity: 1, y: 0 }}
             className="text-6xl md:text-[110px] font-[1000] tracking-tight text-slate-900 leading-[0.85] mb-10 italic uppercase"
           >
-            Tu biología, <br/>
+            Tu control de glucosa, <br/>
             <span className="bg-gradient-to-r from-blue-600 via-blue-500 to-emerald-500 bg-clip-text text-transparent">
-              en perfecto rango.
+              simplificado.
             </span>
           </motion.h1>
 
@@ -48,9 +48,9 @@ const HomeTab: React.FC<HomeTabProps> = ({ currentUser, history = [], onStartCli
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.2 }}
-            className="max-w-2xl mx-auto text-lg md:text-xl text-slate-400 font-medium mb-12 leading-relaxed"
+            className="max-w-2xl mx-auto text-lg md:text-xl text-slate-500 font-medium mb-12 leading-relaxed"
           >
-            Vitametra sincroniza la potencia de nuestra <span className="text-slate-900">IA Bio-Generativa</span> con tus métricas en tiempo real para un control glucémico sin fricciones.
+            Registra, analiza y comprende tus datos con apoyo de <span className="text-slate-900">IA diseñada específicamente</span> para personas con diabetes.
           </motion.p>
 
           <motion.div 
@@ -65,14 +65,14 @@ const HomeTab: React.FC<HomeTabProps> = ({ currentUser, history = [], onStartCli
             >
               <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-emerald-500 opacity-0 group-hover:opacity-100 transition-opacity" />
               <span className="relative flex items-center justify-center gap-3">
-                Comenzar análisis <ArrowRight size={20} />
+                Comenzar ahora <ArrowRight size={20} />
               </span>
             </button>
             <button 
               onClick={onStartClick}
               className="w-full sm:w-auto bg-white text-slate-900 px-10 py-5 rounded-2xl font-bold text-lg border border-slate-200 hover:bg-slate-50 transition-all"
             >
-              Explorar ecosistema
+              Ver planes Chile
             </button>
           </motion.div>
         </div>
@@ -82,20 +82,20 @@ const HomeTab: React.FC<HomeTabProps> = ({ currentUser, history = [], onStartCli
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <FeatureCard 
             icon={<Brain className="text-blue-600" />}
-            title="Pre-Análisis Digital"
-            desc="Modelado predictivo basado en redes neuronales multimodales que anticipan respuestas glucémicas."
+            title="Análisis Predictivo"
+            desc="Modelado basado en redes neuronales que te ayuda a entender el impacto de cada comida en tu cuerpo."
             color="bg-blue-50"
           />
           <FeatureCard 
             icon={<Target className="text-emerald-500" />}
             title="Bio-Optimización"
-            desc="Sincronización exacta de tus objetivos de HbA1c con nutrición de precisión."
+            desc="Sincroniza tus objetivos de salud con recomendaciones nutricionales de alta precisión."
             color="bg-emerald-50"
           />
           <FeatureCard 
             icon={<Shield className="text-slate-900" />}
             title="Protocolo de Datos"
-            desc="Privacidad de grado clínico con encriptado de extremo a extremo bajo estándares internacionales."
+            desc="Privacidad de grado clínico con encriptado de extremo a extremo para tu total tranquilidad."
             color="bg-slate-100"
           />
         </div>
@@ -134,7 +134,7 @@ const HomeTab: React.FC<HomeTabProps> = ({ currentUser, history = [], onStartCli
       </section>
 
       <footer className="py-12 text-center text-slate-400 text-[10px] font-black uppercase tracking-[0.4em]">
-        © 2026 Vitametra Health • Precision Metabolism
+        © 2026 Vitametra Chile • Precision Metabolism
       </footer>
     </div>
   );

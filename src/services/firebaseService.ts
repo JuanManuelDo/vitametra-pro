@@ -18,14 +18,14 @@ import {
 import { getStorage } from "firebase/storage";
 import { getFunctions } from "firebase/functions";
 
-// CONFIGURACIÓN OFICIAL VITAMETRA
+// CONFIGURACIÓN PROTEGIDA (Lee desde Vercel o variables de entorno)
 const firebaseConfig = {
-  apiKey: "AIzaSyBz9Waj-ImxLCDJd6QKunGyE-Xlm2qJXA0", 
-  authDomain: "gen-lang-client-0587114750.firebaseapp.com",
-  projectId: "gen-lang-client-0587114750",
-  storageBucket: "gen-lang-client-0587114750.firebasestorage.app",
-  messagingSenderId: "367332219460",
-  appId: "1:367332219460:web:485e99997b6e8f6681710d"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY, 
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
 // Inicialización de la App
