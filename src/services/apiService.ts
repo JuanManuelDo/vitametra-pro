@@ -1,16 +1,13 @@
 import { 
     doc, getDoc, updateDoc, collection, query, where, 
     onSnapshot, serverTimestamp, orderBy, 
-    limit, Unsubscribe, setDoc, addDoc 
+    limit, Unsubscribe, setDoc, addDoc, deleteDoc 
 } from "firebase/firestore";
 import { 
     signOut, signInWithEmailAndPassword, createUserWithEmailAndPassword 
 } from "firebase/auth";
 import { auth, db } from "./firebaseService"; 
-import { type UserData, type HistoryEntry } from '../types';
-
-// CORRECCIÓN CLAVE: Agregamos las llaves { } porque es un export nombrado en geminiService
-import { analyzeFoodText } from './geminiService';
+import { type UserData, type HistoryEntry, type Hba1cEntry } from '../types';
 
 export const apiService = {
     // --- AUTENTICACIÓN ---
@@ -22,7 +19,6 @@ export const apiService = {
         const userCredential = await createUserWithEmailAndPassword(auth, email.toLowerCase().trim(), pass);
         const uid = userCredential.user.uid;
         
-        // Objeto alineado perfectamente con tu nuevo types.ts
         const initialConfig: UserData = {
             id: uid,
             firstName: name,
@@ -46,15 +42,8 @@ export const apiService = {
             },
             aiMemory: "Iniciando fase de observación metabólica.", 
             memory: {
-                patterns: {
-                    highGlucoseTriggers: [],
-                    effectiveCorrections: [],
-                    notableEvents: []
-                },
-                preferences: {
-                    dietaryRestrictions: [],
-                    favoriteSafeFoods: []
-                },
+                patterns: { highGlucoseTriggers: [], effectiveCorrections: [], notableEvents: [] },
+                preferences: { dietaryRestrictions: [], favoriteSafeFoods: [] },
                 aiNotes: "Sincronizado con el Bio-Core."
             },
             glucoseUnitPreference: 'mg/dL'
@@ -73,41 +62,22 @@ export const apiService = {
         }
     },
 
-    // --- SINCRONIZACIÓN ---
+    // --- PERFIL ---
     async getUserProfile(uid: string): Promise<UserData | null> {
         const userRef = doc(db, "users", uid);
         try {
-            let docSnap = await getDoc(userRef);
-            if (!docSnap.exists()) {
-                // Delay para latencia de Firebase
-                await new Promise(resolve => setTimeout(resolve, 1200));
-                docSnap = await getDoc(userRef);
-            }
-            if (docSnap.exists()) {
-                return { id: docSnap.id, ...docSnap.data() } as UserData;
-            }
+            const docSnap = await getDoc(userRef);
+            if (docSnap.exists()) return { id: docSnap.id, ...docSnap.data() } as UserData;
             return null;
         } catch (error) {
-            console.error("Error en getUserProfile:", error);
             return null;
         }
     },
 
-    // --- ACTUALIZACIÓN DE PERFIL ---
     async updateUser(userData: Partial<UserData> & { id: string }) {
-        try {
-            const userRef = doc(db, "users", userData.id);
-            const { id, ...dataToUpdate } = userData; 
-            
-            await updateDoc(userRef, {
-                ...dataToUpdate,
-                updatedAt: new Date().toISOString()
-            });
-            console.log("✅ Sincronización exitosa con Firebase.");
-        } catch (error) {
-            console.error("Error en updateUser:", error);
-            throw error;
-        }
+        const userRef = doc(db, "users", userData.id);
+        const { id, ...dataToUpdate } = userData; 
+        await updateDoc(userRef, { ...dataToUpdate, updatedAt: new Date().toISOString() });
     },
 
     // --- NÚCLEO IA ---
@@ -115,63 +85,42 @@ export const apiService = {
         const userRef = doc(db, "users", userId);
         const userSnap = await getDoc(userRef);
         const userData = userSnap.data() as UserData;
-        
         if (userData?.subscription_tier !== 'PRO' && (userData?.daily_ia_usage || 0) >= 3) {
             throw new Error("Has agotado tus análisis diarios gratuitos.");
         }
     },
 
-    async analyzeFoodVision(input: string, userId: string) {
-        await this.checkAnalysisLimit(userId);
-        
-        // Ejecución del análisis mediante Gemini
-        const result = await analyzeFoodText(input);
-        
-        // Registro de uso
-        const userSnap = await getDoc(doc(db, "users", userId));
-        const currentUsage = (userSnap.data() as UserData)?.daily_ia_usage || 0;
-        const today = new Date().toISOString().split('T')[0];
-        
-        await this.trackIAUsage(userId, currentUsage, today);
-        return result;
+    // --- HISTORIAL ---
+    async saveHistoryEntry(userId: string, data: Partial<HistoryEntry>) {
+        const historyRef = collection(db, "ingestas");
+        return await addDoc(historyRef, {
+            ...data,
+            userId,
+            createdAt: serverTimestamp(),
+            date: new Date().toISOString()
+        });
     },
 
-    // --- HISTORIAL ---
-    async saveHistoryEntry(data: Partial<HistoryEntry>) {
-        try {
-            const historyRef = collection(db, "ingestas");
-            const entryData = {
-                ...data,
-                createdAt: serverTimestamp(),
-                date: data.date || new Date().toISOString()
-            };
-            const docRef = await addDoc(historyRef, entryData);
-            return docRef.id;
-        } catch (error) {
-            console.error("Error al guardar en historial:", error);
-            throw error;
-        }
+    async deleteHistoryEntry(id: string) {
+        await deleteDoc(doc(db, "ingestas", id));
     },
 
     subscribeToHistory(userId: string, callback: (data: HistoryEntry[]) => void): Unsubscribe {
-        const q = query(
-            collection(db, "ingestas"), 
-            where("userId", "==", userId), 
-            orderBy("createdAt", "desc"),
-            limit(50)
-        );
+        const q = query(collection(db, "ingestas"), where("userId", "==", userId), orderBy("createdAt", "desc"), limit(50));
         return onSnapshot(q, (snapshot) => {
             callback(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any)));
-        }, (error) => {
-            console.error("Error en tiempo real (Historial):", error);
-        });
+        }, (error) => console.error(error));
+    },
+
+    subscribeToHba1cHistory(userId: string, callback: (data: Hba1cEntry[]) => void): Unsubscribe {
+        const q = query(collection(db, "hba1c_logs"), where("userId", "==", userId), orderBy("date", "desc"), limit(20));
+        return onSnapshot(q, (snapshot) => {
+            callback(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any)));
+        }, (error) => console.error(error));
     },
 
     async trackIAUsage(userId: string, currentUsage: number, dateStr: string) {
         const userRef = doc(db, "users", userId);
-        await updateDoc(userRef, {
-            daily_ia_usage: currentUsage + 1,
-            last_ia_usage_date: dateStr
-        });
+        await updateDoc(userRef, { daily_ia_usage: currentUsage + 1, last_ia_usage_date: dateStr });
     }
 };

@@ -3,32 +3,29 @@ export type DiabetesType = 'Type 1' | 'Type 2' | 'LADA' | 'Gestational';
 export type MealType = 'desayuno' | 'almuerzo' | 'cena' | 'snack';
 
 export interface InsulinRatioSegment {
-  startTime: string; // Ej: "08:00"
-  ratio: number;    // Relación Insulina:Carbohidratos
+  startTime: string;
+  ratio: number;
 }
 
-// --- CONFIGURACIÓN CLÍNICA ---
 export interface ClinicalConfig {
   diabetesType?: DiabetesType;
-  insulinSensitivityFactor: number; // ISF: Cuánto baja la glucosa 1 unidad de insulina
-  targetGlucose: number;           // Glucosa objetivo (ej: 100 mg/dL)
+  insulinSensitivityFactor: number;
+  targetGlucose: number;
   weight?: number;
   lastHba1c?: number;
 }
 
-// --- MEMORIA A LARGO PLAZO (NUEVO) ---
-// Esta interfaz almacena el "aprendizaje" complejo que la IA hace sobre el usuario
 export interface LongTermMemory {
   patterns: {
-    highGlucoseTriggers: string[]; // Ej: ["Arroz blanco", "Estrés laboral"]
-    effectiveCorrections: string[]; // Ej: ["Caminata 20min", "Té verde"]
-    notableEvents: string[];       // Hitos: "Cambio de bomba de insulina en 2025"
+    highGlucoseTriggers: string[];
+    effectiveCorrections: string[];
+    notableEvents: string[];
   };
   preferences: {
-    dietaryRestrictions: string[]; // Ej: ["Vegano", "Sin Gluten"]
-    favoriteSafeFoods: string[];   // Alimentos con bajo impacto glucémico probado
+    dietaryRestrictions: string[];
+    favoriteSafeFoods: string[];
   };
-  aiNotes: string; // Espacio donde el Agente IA escribe sus deducciones
+  aiNotes: string;
 }
 
 export interface FoodItem {
@@ -43,7 +40,7 @@ export interface AnalysisResult {
   glycemicIndex: string;
   glycemicLoad: number;
   optimizationTip: string;
-  aiContextualNote?: string; // Nota generada por la memoria
+  aiContextualNote?: string;
 }
 
 export interface HistoryEntry {
@@ -57,12 +54,10 @@ export interface HistoryEntry {
   bloodGlucoseValue?: number;
   finalInsulinUnits?: number;
   isCalibrated: boolean;
-  // Metadata de contexto
   mood?: string;
   physicalActivityLevel?: 'bajo' | 'medio' | 'alto';
 }
 
-// --- USERDATA ACTUALIZADO PARA DESPLIEGUE ---
 export interface UserData {
   id: string;
   firstName: string;
@@ -75,19 +70,11 @@ export interface UserData {
   createdAt: string;
   defaultBasalDose?: number;
   streak: number; 
-  photoURL?: string; // Para el avatar de perfil
-  
-  // Extensiones para la calibración médica y memoria
+  photoURL?: string;
   insulinRatioSchedule?: InsulinRatioSegment[];
   clinicalConfig?: ClinicalConfig; 
-  
-  // NUEVO: aiMemory como string plano para edición rápida en perfil
   aiMemory?: string; 
-  
-  // memory para la estructura de datos compleja (objetos)
   memory?: LongTermMemory; 
-
-  // Ajustes adicionales de usuario
   activityLevel?: string;
   targetWeight?: number;
   targetHba1c?: number;

@@ -1,15 +1,11 @@
 import { analyzeFoodText } from './geminiService';
 import { db } from './firebaseService';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import type { AnalysisResult, HistoryEntry, UserData, MetabolicPrediction } from '../types';
+import type { AnalysisResult, HistoryEntry, UserData } from '../types';
 
-const ALGORITHM_VERSION = 'v4.6-BIO-PRECISION-2026';
+const ALGORITHM_VERSION = 'v4.6-2026';
 
 export const MetraCore = {
-    /**
-     * @patent Búsqueda por Semántica de Texto
-     * Analiza el historial para detectar patrones específicos de este usuario.
-     */
     async findHistoricalImpact(userInput: string, history: HistoryEntry[]): Promise<{ trendMsg: string, adjustment: number }> {
         const safeInput = (userInput || '').toLowerCase().trim();
         if (!safeInput || !Array.isArray(history) || history.length === 0) return { trendMsg: "", adjustment: 0 };
@@ -17,27 +13,14 @@ export const MetraCore = {
         const keywords = safeInput.split(/\s+/).filter(w => w.length > 3);
         
         const similarEntries = history.filter(e => {
-            const entryText = (e?.foodName || '').toLowerCase();
-            return keywords.some(key => entryText.includes(key)) && typeof e?.glucosePost2h === 'number';
+            const entryText = (e?.userInput || '').toLowerCase();
+            return keywords.some(key => entryText.includes(key));
         }).slice(0, 5);
 
-        if (similarEntries.length === 0) return { trendMsg: "Nuevo patrón detectado. Iniciando aprendizaje.", adjustment: 0 };
-
-        const avgPostGlucose = similarEntries.reduce((acc, curr) => acc + (curr.glucosePost2h || 0), 0) / similarEntries.length;
-        
-        if (avgPostGlucose > 180) {
-            return { 
-                trendMsg: `Alerta: Comidas similares te han dejado alto (${Math.round(avgPostGlucose)} mg/dL). Aplicando corrección preventiva.`, 
-                adjustment: 0.15 // Aumenta la dosis un 15%
-            };
-        }
-        return { trendMsg: "Tu metabolismo procesa bien estos alimentos.", adjustment: 0 };
+        if (similarEntries.length === 0) return { trendMsg: "Nuevo patrón detectado.", adjustment: 0 };
+        return { trendMsg: "Patrón reconocido.", adjustment: 0 };
     },
 
-    /**
-     * Motor de Inferencia Metabólica Avanzada
-     * Calcula la dosis basándose en: Carbos (IA) + Historial (Semántica) + Glucemia Actual (Precisión)
-     */
     async processMetabolicInference(
         userInput: string, 
         history: HistoryEntry[], 
@@ -47,75 +30,36 @@ export const MetraCore = {
         const startTime = performance.now();
         
         try {
-            // 1. Análisis Nutricional (IA Gemini con Contexto)
-            const result = await analyzeFoodText(userInput, user, history);
+            const result = await analyzeFoodText(userInput, user);
+            const { trendMsg } = await this.findHistoricalImpact(userInput, history);
             
-            // 2. Correlación Histórica (Many-Shot Learning)
-            const { trendMsg, adjustment: historyAdjustment } = await this.findHistoricalImpact(userInput, history);
-            
-            // 3. Parámetros Clínicos del Perfil
-            const targetGlucose = 100; 
-            const ISF = user.clinicalConfig?.isf || 50; // Factor de sensibilidad
-            const baseRatio = user.clinicalConfig?.insulinToCarbRatio || 10;
-            
-            // 4. CÁLCULO DUAL (Fórmula Maestra Vitametra)
-            const effectiveRatio = baseRatio * (1 - historyAdjustment);
-            const bolusCarbs = result.totalCarbs / (effectiveRatio || 10);
-            
-            let bolusCorrection = 0;
-            if (currentGlucose > targetGlucose) {
-                bolusCorrection = (currentGlucose - targetGlucose) / ISF;
-            }
-
-            const finalInsulin = bolusCarbs + bolusCorrection;
-
-            const prediction: MetabolicPrediction = {
-                suggestedCarbs: result.totalCarbs,
-                suggestedInsulin: parseFloat(finalInsulin.toFixed(1)),
-                correlationFactor: historyAdjustment,
-                algorithmVersion: ALGORITHM_VERSION,
-                glycemicImpact: result.glycemicIndex || 'medio',
-                trendInsight: trendMsg,
-                inferenceLogs: `ISF:${ISF} | Ratio:${effectiveRatio.toFixed(1)} | Corr:${bolusCorrection.toFixed(1)}`
+            const finalResult: AnalysisResult = {
+                ...result,
+                aiContextualNote: trendMsg,
+                optimizationTip: result.optimizationTip || "Procesa con normalidad."
             };
 
-            // 5. Telemetría y Log de Entrenamiento
-            this.logInferencePerformance(userInput, result, historyAdjustment, startTime);
-
-            return { ...result, prediction };
+            this.logInferencePerformance(userInput, finalResult, startTime);
+            return finalResult;
         } catch (error) {
-            console.error("MetraCore Critical Failure:", error);
-            throw new Error("Fallo en la inferencia. Intenta de nuevo.");
+            console.error("MetraCore Error:", error);
+            throw new Error("Fallo en la inferencia.");
         }
     },
 
-    /**
-     * FUNCIÓN DE COMPATIBILIDAD (Alias)
-     * Conecta el componente CarbInputForm con el motor de inferencia.
-     */
     async analyzeMeal(text: string, userData: UserData) {
-        // Llamamos al motor principal pasando un historial vacío por defecto
-        // Si tienes acceso al historial en el componente, pásalo aquí.
-        const result = await this.processMetabolicInference(text, [], userData);
-        
-        // Mapeamos el resultado para que coincida con lo que espera el componente
-        return {
-            carbs: result.prediction?.suggestedCarbs || result.totalCarbs,
-            suggestedInsulin: result.prediction?.suggestedInsulin || 0,
-            ...result
-        };
+        return await this.processMetabolicInference(text, [], userData);
     },
 
-    async logInferencePerformance(input: string, result: any, adj: number, start: number) {
+    async logInferencePerformance(input: string, result: AnalysisResult, start: number) {
         try {
             await addDoc(collection(db, "anonymous_training_logs"), {
                 algo: ALGORITHM_VERSION,
                 input_len: input.length,
                 carbs: result.totalCarbs,
-                adj,
                 ms: Math.round(performance.now() - start),
                 timestamp: serverTimestamp()
             });
-        } catch (e) { /* Fail-safe */ }
+        } catch (e) { /* Error silencioso */ }
     }
 };

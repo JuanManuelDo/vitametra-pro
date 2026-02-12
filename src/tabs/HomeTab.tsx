@@ -1,5 +1,5 @@
 import React from 'react';
-import { Brain, Sparkles, ArrowRight, Zap, Target, Check, Activity, Shield, Heart } from 'lucide-react';
+import { Brain, Sparkles, ArrowRight, Zap, Target, Shield, Heart } from 'lucide-react';
 import { motion } from 'framer-motion';
 import SimplifiedHome from '../components/SimplifiedHome';
 import type { UserData, HistoryEntry } from '../types';
@@ -17,30 +17,12 @@ const HomeTab: React.FC<HomeTabProps> = ({ currentUser, history = [], onStartCli
 
   return (
     <div className="min-h-screen bg-white overflow-x-hidden font-sans selection:bg-blue-100">
-      {/* GLOW DE FONDO AMBIENTAL (Inspirado en Apple Health) */}
       <div className="fixed top-0 left-1/2 -translate-x-1/2 w-full h-[800px] pointer-events-none -z-10">
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-400/10 blur-[120px] rounded-full" />
-        <div className="absolute top-[5%] right-[-5%] w-[30%] h-[30%] bg-emerald-300/10 blur-[100px] rounded-full" />
+        <div className="absolute top-[5%] left-[-10%] w-[40%] h-[40%] bg-blue-400/5 blur-[120px] rounded-full" />
+        <div className="absolute top-[10%] right-[-5%] w-[30%] h-[30%] bg-emerald-300/5 blur-[100px] rounded-full" />
       </div>
 
-      {/* NAVBAR SIMBOLICA */}
-      <nav className="fixed top-0 w-full z-50 px-6 py-6 flex justify-between items-center backdrop-blur-md bg-white/70">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-            <Activity size={18} className="text-white" />
-          </div>
-          <span className="font-black text-xl tracking-tighter text-slate-900">VITAMETRA</span>
-        </div>
-        <button 
-          onClick={onStartClick}
-          className="text-sm font-bold text-blue-600 hover:text-blue-700 transition-colors"
-        >
-          Iniciar Sesión
-        </button>
-      </nav>
-
-      {/* HERO SECTION: THE FUTURE OF HEALTH */}
-      <section className="relative pt-44 pb-20 px-6 max-w-7xl mx-auto">
+      <section className="relative pt-32 pb-20 px-6 max-w-7xl mx-auto">
         <div className="text-center">
           <motion.div 
             initial={{ opacity: 0, scale: 0.9 }}
@@ -48,17 +30,17 @@ const HomeTab: React.FC<HomeTabProps> = ({ currentUser, history = [], onStartCli
             className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-slate-50 border border-slate-200 mb-8"
           >
             <Sparkles size={14} className="text-blue-500" />
-            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Inteligencia Metabólica de Grado Médico</span>
+            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Arquitectura de Inteligencia Metabólica</span>
           </motion.div>
 
           <motion.h1 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-7xl md:text-[110px] font-[1000] tracking-tight text-slate-900 leading-[0.9] mb-10"
+            className="text-6xl md:text-[110px] font-[1000] tracking-tight text-slate-900 leading-[0.85] mb-10 italic uppercase"
           >
-            Tu diabetes, <br/>
+            Tu biología, <br/>
             <span className="bg-gradient-to-r from-blue-600 via-blue-500 to-emerald-500 bg-clip-text text-transparent">
-              ahora es invisible.
+              en perfecto rango.
             </span>
           </motion.h1>
 
@@ -68,7 +50,7 @@ const HomeTab: React.FC<HomeTabProps> = ({ currentUser, history = [], onStartCli
             transition={{ delay: 0.2 }}
             className="max-w-2xl mx-auto text-lg md:text-xl text-slate-400 font-medium mb-12 leading-relaxed"
           >
-            Vitametra fusiona la potencia de la <span className="text-slate-900">IA Generativa</span> con la psicología metabólica para devolverte el control total sin esfuerzo.
+            Vitametra sincroniza la potencia de nuestra <span className="text-slate-900">IA Bio-Generativa</span> con tus métricas en tiempo real para un control glucémico sin fricciones.
           </motion.p>
 
           <motion.div 
@@ -83,53 +65,54 @@ const HomeTab: React.FC<HomeTabProps> = ({ currentUser, history = [], onStartCli
             >
               <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-emerald-500 opacity-0 group-hover:opacity-100 transition-opacity" />
               <span className="relative flex items-center justify-center gap-3">
-                Comenzar ahora <ArrowRight size={20} />
+                Comenzar análisis <ArrowRight size={20} />
               </span>
             </button>
-            <button className="w-full sm:w-auto bg-white text-slate-900 px-10 py-5 rounded-2xl font-bold text-lg border border-slate-200 hover:bg-slate-50 transition-all">
-              Ver Demo
+            <button 
+              onClick={onStartClick}
+              className="w-full sm:w-auto bg-white text-slate-900 px-10 py-5 rounded-2xl font-bold text-lg border border-slate-200 hover:bg-slate-50 transition-all"
+            >
+              Explorar ecosistema
             </button>
           </motion.div>
         </div>
       </section>
 
-      {/* CORE FEATURES: THE APPLE STYLE CARD GRID */}
       <section className="px-6 py-20 max-w-7xl mx-auto">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <FeatureCard 
             icon={<Brain className="text-blue-600" />}
-            title="Análisis Predictivo"
-            desc="Gemini 1.5 procesa tus ingestas y predice curvas antes de que ocurran."
+            title="Pre-Análisis Digital"
+            desc="Modelado predictivo basado en redes neuronales multimodales que anticipan respuestas glucémicas."
             color="bg-blue-50"
           />
           <FeatureCard 
             icon={<Target className="text-emerald-500" />}
-            title="Bio-Sincronización"
-            desc="Alineación perfecta con tus objetivos de HbA1c y tiempo en rango."
+            title="Bio-Optimización"
+            desc="Sincronización exacta de tus objetivos de HbA1c con nutrición de precisión."
             color="bg-emerald-50"
           />
           <FeatureCard 
             icon={<Shield className="text-slate-900" />}
-            title="Privacidad Total"
-            desc="Tus datos de salud están encriptados y bajo tu control absoluto."
+            title="Protocolo de Datos"
+            desc="Privacidad de grado clínico con encriptado de extremo a extremo bajo estándares internacionales."
             color="bg-slate-100"
           />
         </div>
       </section>
 
-      {/* SOCIAL PROOF & METRICS */}
       <section className="py-24 bg-slate-900 text-white rounded-[3rem] mx-4 mb-10 overflow-hidden relative">
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10" />
         <div className="max-w-6xl mx-auto px-10 relative z-10">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
             <div>
-              <h2 className="text-4xl md:text-5xl font-black mb-8 leading-tight">
-                Diseñado para humanos, <br/>potenciado por IA.
+              <h2 className="text-4xl md:text-5xl font-black mb-8 leading-tight italic uppercase">
+                Ciencia Predictiva, <br/>Vida Real.
               </h2>
               <div className="space-y-6">
-                <MetricItem label="Análisis por segundo" value="< 1.2s" />
-                <MetricItem label="Precisión Nutricional" value="98.4%" />
-                <MetricItem label="Satisfacción Usuario" value="4.9/5" />
+                <MetricItem label="Latencia de Procesamiento" value="< 1.1s" />
+                <MetricItem label="Precisión del Modelo" value="98.4%" />
+                <MetricItem label="Indice de Adherencia" value="94.2%" />
               </div>
             </div>
             <div className="bg-white/5 backdrop-blur-xl rounded-[2.5rem] p-10 border border-white/10 shadow-2xl">
@@ -138,44 +121,42 @@ const HomeTab: React.FC<HomeTabProps> = ({ currentUser, history = [], onStartCli
                   <Zap size={24} className="text-white fill-current" />
                 </div>
                 <div>
-                  <p className="font-bold text-xl">Modo Libertad Activo</p>
-                  <p className="text-blue-400 text-sm font-medium">Algoritmo V4.0 en ejecución</p>
+                  <p className="font-bold text-xl uppercase italic">Estado: Optimizado</p>
+                  <p className="text-blue-400 text-xs font-black uppercase tracking-widest">Nodos IA Activos</p>
                 </div>
               </div>
               <p className="text-slate-400 leading-relaxed italic text-lg">
-                "Desde que uso Vitametra, la diabetes ha dejado de ser una carga mental para convertirse en un dato más en mi reloj. La IA entiende mi cuerpo mejor que yo."
+                "Vitametra ha transformado mi gestión metabólica de una tarea reactiva a una estrategia proactiva basada en datos reales."
               </p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* FOOTER SIMPLE */}
-      <footer className="py-12 text-center text-slate-400 text-xs font-bold uppercase tracking-[0.3em]">
-        © 2026 Vitametra Health • Made for Humanity
+      <footer className="py-12 text-center text-slate-400 text-[10px] font-black uppercase tracking-[0.4em]">
+        © 2026 Vitametra Health • Precision Metabolism
       </footer>
     </div>
   );
 };
 
-// COMPONENTES AUXILIARES CON DISEÑO PREMIUM
 const FeatureCard = ({ icon, title, desc, color }: any) => (
   <motion.div 
     whileHover={{ y: -5 }}
-    className="bg-white p-10 rounded-[2.5rem] border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.03)] flex flex-col items-start"
+    className="bg-white p-10 rounded-[2.5rem] border border-slate-100 shadow-sm flex flex-col items-start transition-all"
   >
     <div className={`w-16 h-16 ${color} rounded-2xl flex items-center justify-center mb-6`}>
       {React.cloneElement(icon as React.ReactElement, { size: 28 })}
     </div>
-    <h3 className="text-xl font-bold text-slate-900 mb-3 tracking-tight">{title}</h3>
-    <p className="text-slate-500 leading-relaxed text-sm font-medium">{desc}</p>
+    <h3 className="text-xl font-black text-slate-900 mb-3 tracking-tight italic uppercase">{title}</h3>
+    <p className="text-slate-500 leading-relaxed text-sm font-bold">{desc}</p>
   </motion.div>
 );
 
 const MetricItem = ({ label, value }: { label: string; value: string }) => (
   <div className="flex justify-between items-center border-b border-white/10 pb-4">
-    <span className="text-slate-400 font-medium">{label}</span>
-    <span className="text-2xl font-black text-blue-400">{value}</span>
+    <span className="text-slate-400 font-bold uppercase text-[10px] tracking-widest">{label}</span>
+    <span className="text-2xl font-[1000] italic text-blue-400">{value}</span>
   </div>
 );
 
