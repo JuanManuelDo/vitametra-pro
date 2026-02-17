@@ -2,11 +2,14 @@ const { onCall, HttpsError, onRequest } = require("firebase-functions/v2/https")
 const admin = require("firebase-admin");
 const { MercadoPagoConfig, Payment } = require("mercadopago");
 
+// Importamos la lógica de procesamiento (Asegúrate de haber creado importData.js)
+const { processFile } = require("./importData");
+
 if (admin.apps.length === 0) {
     admin.initializeApp();
 }
 
-// Configuración con tu Access Token de producción (necesario para validar pagos de sandbox también)
+// Configuración Mercado Pago
 const client = new MercadoPagoConfig({ 
     accessToken: "APP_USR-5085620590656834-010519-75f9c2645782ba627abd3c72de22fe8a-3113708019" 
 });
@@ -43,7 +46,6 @@ exports.processPayment = onCall({
                 firebase_uid: uid, 
                 plan_type: planId 
             },
-            // URL ACTUALIZADA SEGÚN TU ÚLTIMO DEPLOY EXITOSO
             notification_url: "https://mercadopagowebhook-pe6bb56yhq-uc.a.run.app"
         };
 
@@ -67,11 +69,8 @@ exports.mercadoPagoWebhook = onRequest({
     region: "us-central1",
     cors: true 
 }, async (req, res) => {
-    // Mercado Pago envía el ID de formas distintas según el evento
     const paymentId = req.query.id || (req.body.data && req.body.data.id);
     const type = req.query.topic || req.body.type;
-
-    console.log(`WEBHOOK RECIBIDO: Tipo=${type}, ID=${paymentId}`);
 
     try {
         if (type === "payment" || type === "payment.created") {
@@ -81,16 +80,48 @@ exports.mercadoPagoWebhook = onRequest({
             if (data.status === "approved") {
                 const uid = data.external_reference;
                 const planId = data.metadata.plan_type;
-                
-                console.log(`ACTIVACIÓN WEBHOOK: Usuario ${uid} a plan ${planId}`);
                 await activateProFeatures(uid, planId, paymentId);
             }
         }
-        // Siempre responder 200 para que MP deje de enviar la notificación
         res.status(200).send("OK");
     } catch (error) {
         console.error("WEBHOOK ERROR:", error);
         res.status(200).send("OK_ERROR"); 
+    }
+});
+
+/**
+ * 3. importMedicalReport: NUEVA FUNCIÓN PARA IMPORTAR PDF/CSV
+ * Recibe el archivo en Base64 desde el frontend
+ */
+exports.importMedicalReport = onCall({
+    region: "us-central1",
+    maxInstances: 5,
+    memory: "512MiB" // Aumentamos memoria para procesar PDFs
+}, async (request) => {
+    // 1. Verificación de Seguridad
+    const uid = request.auth?.uid;
+    if (!uid) throw new HttpsError('unauthenticated', 'Acceso denegado.');
+
+    const { fileBase64, fileName, fileType } = request.data;
+    
+    if (!fileBase64) throw new HttpsError('invalid-argument', 'No se recibió el archivo.');
+
+    try {
+        // Convertir Base64 a Buffer (Node.js)
+        const fileBuffer = Buffer.from(fileBase64, 'base64');
+        
+        // Ejecutar la lógica de parsing y deduplicación en importData.js
+        const result = await processFile(uid, fileBuffer, fileType);
+
+        return { 
+            success: true, 
+            message: "Reporte procesado exitosamente",
+            processedEntries: result?.count || 0 
+        };
+    } catch (error) {
+        console.error("IMPORT ERROR:", error);
+        throw new HttpsError('internal', error.message || 'Error procesando el documento.');
     }
 });
 

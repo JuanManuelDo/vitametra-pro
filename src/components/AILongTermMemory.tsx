@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Brain, Sparkles, History, Save, MessageSquare, Loader2 } from 'lucide-react';
-import { apiService } from '../services/apiService';
+// RUTA CORREGIDA: Apuntando a la nueva arquitectura de infraestructura
+import { apiService } from '../services/infrastructure/apiService';
 import type { UserData } from '../types';
 
 interface AILongTermMemoryProps {

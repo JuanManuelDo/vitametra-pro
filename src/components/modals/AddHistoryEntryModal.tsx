@@ -1,9 +1,9 @@
-
 import React, { useState, useEffect } from 'react';
 import type { HistoryEntry, MealType, FoodItem, UserData } from '../../types';
 import { XMarkIcon, CheckCircleIcon, SparklesIcon, LockClosedIcon, ClockIcon } from '../ui/Icons';
 import Spinner from './Spinner';
-import { apiService } from '../../services/apiService';
+// RUTA CORREGIDA A INFRAESTRUCTURA
+import { apiService } from '../../services/infrastructure/apiService';
 import { useNavigate } from 'react-router-dom';
 
 interface AddHistoryEntryModalProps {
@@ -105,6 +105,7 @@ const AddHistoryEntryModal: React.FC<AddHistoryEntryModalProps> = ({ initialDate
             recommendedInsulinUnits: insulinDose ? Math.max(0, insulinNum) : undefined,
         });
     } catch (error) {
+        console.error("Save error:", error);
         alert("Error al guardar el registro clínico.");
     } finally {
         setIsSaving(false);

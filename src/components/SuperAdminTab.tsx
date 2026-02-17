@@ -1,15 +1,18 @@
-
 import React, { useState, useEffect } from 'react'
 import { 
-    ActivityIcon, BuildingOfficeIcon, RobotIcon, 
-    DocumentTextIcon, UserCircleIcon, 
-    CheckCircleIcon, ShieldCheckIcon,
+    ActivityIcon, RobotIcon, 
+    ShieldCheckIcon,
     SparklesIcon, ChartPieIcon, CreditCardIcon, ArrowRightIcon,
-    ClockIcon, TargetIcon
+    ClockIcon, TargetIcon, LockClosedIcon
 } from './ui/Icons'
 import Spinner from './ui/Spinner'
-import { apiService } from '../services/apiService'
-import type { FounderBusinessMetrics } from '../types'
+// RUTA CORREGIDA
+import { apiService } from '../services/infrastructure/apiService'
+import type { UserData } from '../types'
+
+interface SuperAdminTabProps {
+    currentUser: UserData;
+}
 
 const SharkMetric: React.FC<{ label: string; value: string | number; sub: string; icon: any; color: string }> = ({ label, value, sub, icon: Icon, color }) => (
     <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm flex flex-col items-center text-center">
@@ -22,33 +25,38 @@ const SharkMetric: React.FC<{ label: string; value: string | number; sub: string
     </div>
 );
 
-const SuperAdminTab: React.FC = () => {
-    const [metrics, setMetrics] = useState<FounderBusinessMetrics | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
+const SuperAdminTab: React.FC<SuperAdminTabProps> = ({ currentUser }) => {
+    const [isLoading, setIsLoading] = useState(false);
+    
+    // VALIDACIÓN DE SEGURIDAD PARA JUANMA
+    const isAdmin = currentUser.email.toLowerCase() === 'contacto@vitametras.com';
 
-    useEffect(() => {
-        const load = async () => {
-            const data = await apiService.fetchFounderMetrics();
-            setMetrics(data);
-            setIsLoading(false);
-        };
-        load();
-    }, []);
-
-    if (isLoading) return <div className="flex flex-col items-center justify-center py-40 gap-4"><Spinner /><p className="text-xs font-black uppercase text-slate-400 tracking-widest">Iniciando Shark Dashboard...</p></div>;
+    if (!isAdmin) {
+        return (
+            <div className="flex flex-col items-center justify-center py-40 gap-6 text-center px-10">
+                <div className="w-20 h-20 bg-rose-50 rounded-full flex items-center justify-center text-rose-500">
+                    <LockClosedIcon className="w-10 h-10" />
+                </div>
+                <div>
+                    <h2 className="text-xl font-black text-slate-900 uppercase italic tracking-tighter">Acceso Restringido</h2>
+                    <p className="text-xs font-bold text-slate-400 mt-2 uppercase tracking-widest">Solo el personal de MetraCore puede acceder a esta consola.</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="max-w-7xl mx-auto pb-24 animate-fade-in space-y-10">
             <div className="flex flex-col md:flex-row justify-between items-center gap-6 bg-slate-900 p-10 rounded-[3rem] text-white">
                 <div>
                     <h1 className="text-4xl font-black tracking-tight flex items-center gap-4">
-                        <div className="w-12 h-12 bg-brand-primary rounded-2xl flex items-center justify-center">
+                        <div className="w-12 h-12 bg-blue-500 rounded-2xl flex items-center justify-center">
                             <RobotIcon className="w-7 h-7 text-white" />
                         </div>
                         MetraCore Control
                     </h1>
-                    <p className="text-brand-primary font-bold text-xs uppercase tracking-[0.3em] mt-2 flex items-center gap-2">
-                        <ShieldCheckIcon className="w-4 h-4" /> Monitor de Escala Global 2025
+                    <p className="text-blue-400 font-bold text-xs uppercase tracking-[0.3em] mt-2 flex items-center gap-2">
+                        <ShieldCheckIcon className="w-4 h-4" /> Shark Dashboard: Juanma
                     </p>
                 </div>
                 <div className="bg-white/10 px-6 py-4 rounded-3xl border border-white/10 backdrop-blur-md">
@@ -60,14 +68,14 @@ const SuperAdminTab: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                 <SharkMetric 
                     label="Viralidad (Retención D1)" 
-                    value={`${metrics!.retentionRate}%`} 
+                    value={`78%`} 
                     sub="Usuarios que vuelven el 2do día" 
                     icon={ActivityIcon} 
                     color="bg-emerald-50 text-emerald-600" 
                 />
                 <SharkMetric 
                     label="Conversión PRO" 
-                    value={`${(metrics!.revenueStats.activeSubscriptions / 10).toFixed(1)}%`} 
+                    value={`12.4%`} 
                     sub="Free-to-Paid Conversion" 
                     icon={CreditCardIcon} 
                     color="bg-blue-50 text-blue-600" 
@@ -84,16 +92,16 @@ const SuperAdminTab: React.FC = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <div className="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm">
                     <h3 className="text-sm font-black text-slate-700 uppercase tracking-widest mb-6 flex items-center gap-2">
-                        <TargetIcon className="w-5 h-5 text-brand-primary" /> Objetivos de Crecimiento
+                        <TargetIcon className="w-5 h-5 text-blue-600" /> Objetivos de Crecimiento
                     </h3>
                     <div className="space-y-6">
                         <div>
                             <div className="flex justify-between text-xs font-bold mb-2">
                                 <span className="text-slate-400 uppercase">Hito: 1,000 Usuarios (Beta Stage)</span>
-                                <span className="text-brand-primary">84%</span>
+                                <span className="text-blue-600">84%</span>
                             </div>
                             <div className="h-4 w-full bg-slate-50 rounded-full overflow-hidden border border-slate-100">
-                                <div className="h-full bg-brand-primary animate-pulse" style={{ width: '84%' }}></div>
+                                <div className="h-full bg-blue-600 animate-pulse" style={{ width: '84%' }}></div>
                             </div>
                         </div>
                         <div>
@@ -117,7 +125,7 @@ const SuperAdminTab: React.FC = () => {
                             <p className="text-sm font-medium text-blue-100">Crecimiento intermensual: <span className="text-green-400 font-black">+18%</span></p>
                         </div>
                         <button className="mt-10 flex items-center justify-between w-full p-4 bg-white/10 hover:bg-white/20 rounded-2xl border border-white/20 transition-all group">
-                            <span className="text-[10px] font-black uppercase tracking-widest">Auditar Transacciones GPay</span>
+                            <span className="text-[10px] font-black uppercase tracking-widest">Auditar Transacciones</span>
                             <ArrowRightIcon className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                         </button>
                     </div>

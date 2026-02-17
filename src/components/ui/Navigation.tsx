@@ -3,8 +3,8 @@ import {
   LayoutGrid, 
   History, 
   User, 
-  Zap,
-  Settings2
+  Utensils,    // UX: Mejor que Zap para nutrición
+  Stethoscope   // UX: Mejor que Settings2 para clínico
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -17,10 +17,26 @@ const Navigation: React.FC<NavigationProps> = ({ activeTab, onTabChange }) => {
   
   const tabs = [
     { id: 'dashboard', label: 'Inicio', icon: <LayoutGrid size={22} />, path: 'dashboard' },
-    { id: 'analyzer', label: 'Mente IA', icon: <Zap size={22} />, path: 'analyzer' },
+    { 
+      id: 'analyzer', 
+      label: 'Nutrición IA', // Antes: Mente IA
+      icon: <Utensils size={22} />, 
+      path: 'analyzer',
+      badge: true 
+    },
     { id: 'history', label: 'Progreso', icon: <History size={22} />, path: 'history' },
-    { id: 'settings', label: 'Clínico', icon: <Settings2 size={22} />, path: 'settings' }, // Nuevo botón
-    { id: 'profile', label: 'Tú', icon: <User size={22} />, path: 'profile' },
+    { 
+      id: 'settings', 
+      label: 'Clínico',      // Mantenemos Clínico pero con ícono profesional
+      icon: <Stethoscope size={22} />, 
+      path: 'settings' 
+    },
+    { 
+      id: 'profile', 
+      label: 'Perfil',       // Antes: Tú
+      icon: <User size={22} />, 
+      path: 'profile' 
+    },
   ];
 
   // Normalizamos para que coincida con la lógica de App.tsx
@@ -47,11 +63,19 @@ const Navigation: React.FC<NavigationProps> = ({ activeTab, onTabChange }) => {
                 />
               )}
 
-              <div className={`transition-all duration-300 transform ${isActive ? 'scale-110 text-blue-600' : 'text-slate-400 group-hover:text-slate-600'}`}>
+              <div className={`relative transition-all duration-300 transform ${isActive ? 'scale-110 text-blue-600' : 'text-slate-400 group-hover:text-slate-600'}`}>
                 {tab.icon}
+                
+                {/* Badge sutil para la función de IA */}
+                {tab.badge && (
+                  <span className="absolute -top-1 -right-1 flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-600"></span>
+                  </span>
+                )}
               </div>
 
-              <span className={`text-[8px] font-black uppercase tracking-[0.1em] mt-1.5 transition-colors duration-300 ${isActive ? 'text-blue-600' : 'text-slate-400'}`}>
+              <span className={`text-[8px] font-[900] uppercase tracking-[0.05em] mt-1.5 transition-colors duration-300 italic ${isActive ? 'text-blue-600' : 'text-slate-400'}`}>
                 {tab.label}
               </span>
 

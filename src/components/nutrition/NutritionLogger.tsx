@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { Utensils, Flame, Plus } from 'lucide-react';
 import VoiceScannerModal from './VoiceScannerModal';
-import { ParsedFood } from '../../services/nutritionParser';
-import { glucosePredictor } from '../../services/glucosePredictor'; // IMPORTADO
+import { glucosePredictor } from '../../services/glucosePredictor';
 
 interface MacroRingProps {
   label: string;
@@ -35,43 +34,28 @@ const MacroRing: React.FC<MacroRingProps> = ({ label, current, target, color }) 
 
 export const NutritionLogger: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  
-  // ESTADOS DE NUTRICIÓN DIARIA
-  const [dailyStats, setDailyStats] = useState({
-    calories: 1200,
-    protein: 45,
-    carbs: 80,
-    fat: 30
-  });
+  const [dailyStats, setDailyStats] = useState({ calories: 1200, protein: 45, carbs: 80, fat: 30 });
+  const [meals, setMeals] = useState([{ name: 'Desayuno Base', time: '08:00 AM', cal: 450, carbs: '30g' }]);
 
-  const [meals, setMeals] = useState([
-    { name: 'Desayuno Base', time: '08:00 AM', cal: 450, carbs: '30g' }
-  ]);
-
-  const targets = {
-    calories: 2200,
-    protein: 160,
-    carbs: 200,
-    fat: 70
-  };
+  const targets = { calories: 2200, protein: 160, carbs: 200, fat: 70 };
 
   const handleAnalysisComplete = (dataString: string) => {
     try {
-      const newFoods: ParsedFood[] = JSON.parse(dataString);
+      if (!dataString) return;
+      const newFoods = JSON.parse(dataString);
       
-      const addedCal = newFoods.reduce((acc, f) => acc + f.calories, 0);
-      const addedProtein = newFoods.reduce((acc, f) => acc + f.protein, 0);
-      const addedCarbs = newFoods.reduce((acc, f) => acc + f.carbs, 0);
-      const addedFat = newFoods.reduce((acc, f) => acc + f.fat, 0);
+      // SEGURO: Validar que sea un array y tenga elementos
+      if (!Array.isArray(newFoods) || newFoods.length === 0) {
+        throw new Error("Formato de alimento inválido");
+      }
 
-      // --- LÓGICA DE PROYECCIÓN DE GLUCOSA ---
-      if (addedCarbs > 0) {
-        const currentLevel = 100; // Nivel base hipotético
-        const projection = glucosePredictor.predictImpact(currentLevel, addedCarbs);
-        
-        console.log("🚀 BIO-CORE: Proyección de Glucosa Generada");
-        console.table(projection); 
-        // Aquí es donde dispararíamos el evento para actualizar el gráfico global
+      const addedCal = newFoods.reduce((acc, f) => acc + (f.calories || 0), 0);
+      const addedProtein = newFoods.reduce((acc, f) => acc + (f.protein || 0), 0);
+      const addedCarbs = newFoods.reduce((acc, f) => acc + (f.carbs || 0), 0);
+      const addedFat = newFoods.reduce((acc, f) => acc + (f.fat || 0), 0);
+
+      if (addedCarbs > 0 && glucosePredictor) {
+        glucosePredictor.predictImpact(100, addedCarbs);
       }
 
       setDailyStats(prev => ({
@@ -84,17 +68,16 @@ export const NutritionLogger: React.FC = () => {
       const now = new Date();
       const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       
-      const newMealEntry = {
-        name: newFoods.length > 1 ? "Comida Variada" : newFoods[0].name,
+      setMeals(prev => [{
+        name: newFoods[0]?.name || "Comida Registrada",
         time: timeStr,
         cal: addedCal,
         carbs: `${addedCarbs}g`
-      };
-
-      setMeals(prev => [newMealEntry, ...prev]);
+      }, ...prev]);
 
     } catch (e) {
-      console.error("Error procesando alimentos confirmados:", e);
+      console.error("Error en Bio-Core Nutrition:", e);
+      // Aquí podrías mostrar un snackbar al usuario diciendo que el formato no fue reconocido
     }
   };
 
@@ -113,10 +96,7 @@ export const NutritionLogger: React.FC = () => {
               </h3>
             </div>
           </div>
-          <button 
-            onClick={() => setIsModalOpen(true)}
-            className="bg-metra-dark text-white p-3 rounded-2xl active:scale-90 transition-transform shadow-lg hover:bg-metra-blue transition-colors"
-          >
+          <button onClick={() => setIsModalOpen(true)} className="bg-metra-dark text-white p-3 rounded-2xl active:scale-90 transition-transform shadow-lg hover:bg-metra-blue transition-colors">
             <Plus size={20} />
           </button>
         </div>
@@ -128,13 +108,8 @@ export const NutritionLogger: React.FC = () => {
         </div>
 
         <div className="mt-6 space-y-4 overflow-y-auto max-h-[300px] pr-2 custom-scrollbar">
-          <div className="flex justify-between items-center sticky top-0 bg-white pb-2">
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">Log de Hoy</p>
-            <button className="text-[10px] font-black text-metra-blue uppercase tracking-widest">Detalles</button>
-          </div>
-
           {meals.map((item, i) => (
-            <div key={i} className="flex items-center justify-between p-4 bg-slate-50 rounded-[1.8rem] group hover:bg-white hover:shadow-md transition-all border border-transparent hover:border-slate-100 animate-in slide-in-from-right-4 duration-500">
+            <div key={i} className="flex items-center justify-between p-4 bg-slate-50 rounded-[1.8rem] group hover:bg-white transition-all border border-transparent hover:border-slate-100">
               <div className="flex items-center gap-4">
                 <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-slate-400">
                   <Utensils size={16} />
@@ -152,12 +127,7 @@ export const NutritionLogger: React.FC = () => {
           ))}
         </div>
       </div>
-
-      <VoiceScannerModal 
-        isOpen={isModalOpen} 
-        onClose={() => setIsModalOpen(false)} 
-        onAnalysisComplete={handleAnalysisComplete}
-      />
+      <VoiceScannerModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onAnalysisComplete={handleAnalysisComplete} />
     </>
   );
 };

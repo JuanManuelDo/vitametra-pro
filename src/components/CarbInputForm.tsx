@@ -1,103 +1,101 @@
-import React, { useState } from 'react';
-import { MetraCore } from '../services/metraCore';
-import { Camera, Loader2, Sparkles, BrainCircuit } from 'lucide-react';
-import { type UserData, type AnalysisResult, type HistoryEntry, type MealType } from '../types';
+import React from 'react';
+import { motion } from 'framer-motion';
+import { Search, Sparkles, Loader2, ArrowRight } from 'lucide-react';
+// RUTA CORREGIDA: Apuntando a la nueva carpeta de IA
+import { MetraCore } from '../services/ai/metraCore'; 
+import type { UserData } from '../types';
 
 interface CarbInputFormProps {
-  currentUser: UserData;
-  onAnalysisComplete: (result: AnalysisResult, historyEntry: HistoryEntry) => void;
+  foodInput: string;
+  setFoodInput: (value: string) => void;
+  onSubmit: () => void;
+  isLoading: boolean;
 }
 
-const CarbInputForm: React.FC<CarbInputFormProps> = ({ currentUser, onAnalysisComplete }) => {
-  const [input, setInput] = useState('');
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-
-  const handleAnalyze = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!input.trim() || isAnalyzing) return;
-
-    setIsAnalyzing(true);
-    try {
-      const result = await MetraCore.analyzeMeal(input, currentUser);
-      
-      // Definimos explícitamente el tipo de comida para que coincida con MealType
-      const defaultMealType: MealType = 'almuerzo';
-
-      // MAPEO ESTRICTO SEGÚN TU INTERFAZ TYPES.TS
-      // Nota: Asegúrate de que todos los campos requeridos en types.ts estén aquí.
-      const historyEntry: HistoryEntry = {
-        id: Date.now().toString(),
-        userId: currentUser.id || 'anonymous',
-        date: new Date().toISOString(),
-        createdAt: new Date(), 
-        mealType: defaultMealType,
-        userInput: input,
-        totalCarbs: result.totalCarbs,
-        bloodGlucoseValue: 0,
-        finalInsulinUnits: 0,
-        isCalibrated: false,
-        // Campos opcionales inicializados para evitar que TS se queje si cambias la interfaz a requerida
-        mood: '',
-        physicalActivityLevel: 'medio'
-      };
-
-      onAnalysisComplete(result, historyEntry);
-      setInput('');
-    } catch (error) {
-      console.error("Error Vitametra Core:", error);
-      alert("No se pudo analizar la comida. Intenta de nuevo.");
-    } finally {
-      setIsAnalyzing(false);
+const CarbInputForm: React.FC<CarbInputFormProps> = ({ 
+  foodInput, 
+  setFoodInput, 
+  onSubmit, 
+  isLoading 
+}) => {
+  
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey && foodInput.trim()) {
+      e.preventDefault();
+      onSubmit();
     }
   };
 
   return (
-    <div className="bg-white rounded-[2.5rem] p-6 shadow-xl border border-slate-100 animate-in fade-in duration-500">
-      <div className="flex items-center gap-3 mb-6">
-        <div className="bg-blue-50 p-3 rounded-2xl text-blue-600">
-          <BrainCircuit size={24} />
-        </div>
-        <div>
-          <h3 className="text-lg font-black text-slate-900 uppercase italic tracking-tighter">Analizador</h3>
-          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Vitametra AI Core</p>
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="w-full max-w-2xl mx-auto"
+    >
+      <div className="relative group">
+        {/* Decoración de resplandor IA */}
+        <div className="absolute -inset-1 bg-gradient-to-r from-blue-600 to-cyan-500 rounded-[2.5rem] blur opacity-25 group-focus-within:opacity-50 transition duration-1000"></div>
+        
+        <div className="relative bg-white rounded-[2.5rem] shadow-2xl overflow-hidden border border-slate-100">
+          <div className="flex items-center px-8 py-6">
+            <div className="mr-4 text-blue-600">
+              {isLoading ? (
+                <Loader2 size={24} className="animate-spin" />
+              ) : (
+                <Sparkles size={24} />
+              )}
+            </div>
+            
+            <textarea
+              value={foodInput}
+              onChange={(e) => setFoodInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Describe tu comida (ej: '2 tacos de pastor y una coca zero')..."
+              className="flex-1 bg-transparent border-none outline-none text-lg font-medium text-slate-800 placeholder:text-slate-300 resize-none h-12 py-2"
+              disabled={isLoading}
+            />
+
+            <button
+              onClick={onSubmit}
+              disabled={isLoading || !foodInput.trim()}
+              className={`ml-4 p-4 rounded-2xl transition-all ${
+                foodInput.trim() && !isLoading 
+                ? 'bg-blue-600 text-white shadow-lg shadow-blue-200 hover:scale-105 active:scale-95' 
+                : 'bg-slate-100 text-slate-300'
+              }`}
+            >
+              {isLoading ? (
+                <Loader2 size={20} className="animate-spin" />
+              ) : (
+                <ArrowRight size={20} />
+              )}
+            </button>
+          </div>
+
+          <div className="bg-slate-50 px-8 py-3 flex items-center justify-between border-t border-slate-50">
+            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">
+              Metra Inferencia Bio-Nutricional
+            </span>
+            <div className="flex gap-2">
+               <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+               <span className="text-[9px] font-bold text-slate-400">Motor v4.7 Activo</span>
+            </div>
+          </div>
         </div>
       </div>
 
-      <form onSubmit={handleAnalyze} className="space-y-4">
-        <div className="relative">
-          <textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="¿Qué vas a comer?"
-            className="w-full h-32 p-6 bg-slate-50 border-none rounded-[2rem] font-bold text-sm text-slate-900 placeholder:text-slate-300 outline-none focus:ring-4 focus:ring-blue-100 transition-all resize-none shadow-inner"
-          />
+      <div className="mt-6 flex flex-wrap justify-center gap-3">
+        {['Desayuno ligero', 'Almuerzo completo', 'Cena Keto'].map((suggestion) => (
           <button
-            type="button"
-            className="absolute bottom-4 right-4 p-3 bg-white text-slate-400 rounded-xl shadow-sm hover:text-blue-600 hover:scale-110 active:scale-90 transition-all"
+            key={suggestion}
+            onClick={() => setFoodInput(suggestion)}
+            className="px-4 py-2 bg-white border border-slate-200 rounded-full text-[10px] font-bold text-slate-500 hover:border-blue-400 hover:text-blue-600 transition-colors shadow-sm"
           >
-            <Camera size={20} />
+            + {suggestion}
           </button>
-        </div>
-
-        <button
-          type="submit"
-          disabled={!input.trim() || isAnalyzing}
-          className="w-full bg-slate-900 text-white p-6 rounded-[2rem] font-bold text-sm shadow-2xl flex items-center justify-center gap-3 active:scale-[0.98] disabled:opacity-30 transition-all"
-        >
-          {isAnalyzing ? (
-            <>
-              <Loader2 className="animate-spin" size={18} />
-              Procesando...
-            </>
-          ) : (
-            <>
-              <Sparkles size={18} className="text-blue-400" />
-              Calcular dosis
-            </>
-          )}
-        </button>
-      </form>
-    </div>
+        ))}
+      </div>
+    </motion.div>
   );
 };
 

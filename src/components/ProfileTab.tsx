@@ -6,13 +6,16 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { storage, db } from "../services/firebaseService";
 import { doc, updateDoc } from "firebase/firestore";
-import { apiService } from '../services/apiService';
+
+// 1. RUTAS DE INFRAESTRUCTURA (Asegúrate de que estos archivos existan en estas rutas)
+import { storage, db } from "../services/infrastructure/firebaseService";
+import { apiService } from "../services/infrastructure/apiService";
 import type { UserData, InsulinRatioSegment } from '../types';
 
+// 2. IMPORTACIONES DE COMPONENTES HIJOS (RUTAS CORREGIDAS)
 import AILongTermMemory from './AILongTermMemory';
-import ClinicalSettingsEditor from './ClinicalSettingsEditor';
+import ClinicalSettingsEditor from './ClinicalSettingsEditor'; // CORREGIDO: Eliminado /clinical/
 import ActivityLevelSelector from './auth/ActivityLevelSelector';
 import ClinicalGoalsSelector from './auth/ClinicalGoalsSelector';
 
@@ -95,7 +98,6 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ currentUser, onUpdateUser }) =>
 
   return (
     <div className="min-h-screen bg-[#FBFBFE] pb-40">
-      {/* HEADER PREMIUM */}
       <header className="relative pt-20 pb-12 px-6 bg-white rounded-b-[4rem] shadow-[0_20px_50px_rgba(0,0,0,0.02)] overflow-hidden">
         <div className="absolute top-0 right-0 w-64 h-64 bg-blue-50 blur-[100px] rounded-full -mr-32 -mt-32 opacity-60" />
         
@@ -134,8 +136,6 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ currentUser, onUpdateUser }) =>
       </header>
 
       <main className="px-6 mt-10 space-y-10">
-        
-        {/* MEMORIA IA - ESTILO CARD APPLE */}
         <section className="bg-white p-8 rounded-[3rem] border border-slate-50 shadow-[0_8px_30px_rgba(0,0,0,0.02)]">
             <div className="flex items-center gap-3 mb-6">
                 <div className="p-2 bg-blue-50 text-blue-600 rounded-xl">
@@ -146,7 +146,6 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ currentUser, onUpdateUser }) =>
             <AILongTermMemory currentUser={currentUser} />
         </section>
 
-        {/* CALIBRACIÓN DEL SISTEMA */}
         <section className="space-y-6">
           <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] ml-4">Parámetros de Calibración</h3>
           <div className="bg-white rounded-[3rem] border border-slate-50 shadow-[0_8px_30px_rgba(0,0,0,0.02)] overflow-hidden">
@@ -172,7 +171,6 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ currentUser, onUpdateUser }) =>
           </div>
         </section>
 
-        {/* EDITOR CLÍNICO */}
         <section className="bg-white p-8 rounded-[3rem] border border-slate-50 shadow-[0_8px_30px_rgba(0,0,0,0.02)]">
            <ClinicalSettingsEditor 
               currentUser={currentUser} 
@@ -180,7 +178,6 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ currentUser, onUpdateUser }) =>
            />
         </section>
 
-        {/* RATIOS METABÓLICOS */}
         <section className="space-y-6">
           <div className="flex items-center justify-between px-4">
             <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Cronología de Ratios</h3>
@@ -215,7 +212,6 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ currentUser, onUpdateUser }) =>
           </div>
         </section>
 
-        {/* BOTONES DE ACCIÓN */}
         <div className="space-y-4 pt-6">
             <button 
                 onClick={saveClinicalConfig}
@@ -237,13 +233,11 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ currentUser, onUpdateUser }) =>
         </div>
       </main>
 
-      {/* FOOTER */}
       <footer className="py-20 text-center opacity-30">
         <Zap size={20} fill="currentColor" className="mx-auto mb-4 text-slate-400" />
         <p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.6em]">Vitametra Engine v4.2.0 • 2026</p>
       </footer>
 
-      {/* MODAL ESTILO APPLE (BOTTON SHEET) */}
       <AnimatePresence>
         {activeModal && (
           <div className="fixed inset-0 z-[2000] flex items-end justify-center">
@@ -266,7 +260,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ currentUser, onUpdateUser }) =>
               <div className="flex justify-between items-center mb-10">
                 <h3 className="text-2xl font-[1000] text-slate-900 uppercase italic tracking-tighter">
                   {activeModal === 'activity' && 'Bio-Actividad'}
-                  {activeModal === 'units' && 'Sistema Médica'}
+                  {activeModal === 'units' && 'Sistema Médico'}
                   {activeModal === 'goals' && 'Metas Clínicas'}
                 </h3>
                 <button onClick={() => setActiveModal(null)} className="p-3 bg-slate-50 rounded-full text-slate-400 hover:text-slate-900 transition-colors">
@@ -274,7 +268,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ currentUser, onUpdateUser }) =>
                 </button>
               </div>
 
-              <div className="max-h-[60vh] overflow-y-auto custom-scrollbar">
+              <div className="max-h-[60vh] overflow-y-auto">
                 {activeModal === 'activity' && (
                   <ActivityLevelSelector selectedId={currentUser.activityLevel} onSelect={handleUpdateActivity} />
                 )}
@@ -286,7 +280,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ currentUser, onUpdateUser }) =>
                         onClick={() => handleUpdateUnits(u as any)}
                         className={`p-8 rounded-[2.5rem] border-2 flex justify-between items-center transition-all ${
                           currentUser.glucoseUnitPreference === u 
-                          ? 'bg-blue-600 border-blue-600 text-white shadow-xl scale-[1.02]' 
+                          ? 'bg-blue-600 border-blue-600 text-white shadow-xl' 
                           : 'bg-slate-50 border-transparent text-slate-800 hover:bg-slate-100'
                         }`}
                       >
@@ -313,7 +307,6 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ currentUser, onUpdateUser }) =>
   );
 };
 
-// COMPONENTE DE FILA DE AJUSTES
 const SettingsRow = ({ icon, label, value, onClick, isLast }: any) => (
     <button 
         onClick={onClick}

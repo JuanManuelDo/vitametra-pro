@@ -1,10 +1,11 @@
 {
-  "name": "vitametra-backend-functions",
-  "description": "VitaMetra Cloud Gateway - Secure Payment & Notifications",
-  "main": "index.js",
+  "name": "functions",
   "scripts": {
-    "serve": "firebase serve --only functions",
-    "shell": "firebase functions:shell",
+    "lint": "eslint src",
+    "build": "tsc",
+    "build:watch": "tsc --watch",
+    "serve": "npm run build && firebase emulators:start --only functions",
+    "shell": "npm run build && firebase functions:shell",
     "start": "npm run shell",
     "deploy": "firebase deploy --only functions",
     "logs": "firebase functions:log"
@@ -12,12 +13,19 @@
   "engines": {
     "node": "20"
   },
+  "main": "lib/index.js",
   "dependencies": {
-    "cors": "^2.8.6",
-    "firebase-admin": "^13.6.0",
-    "firebase-functions": "^7.0.5",
-    "mercadopago": "^2.12.0",
-    "nodemailer": "^6.9.7"
+    "axios": "^1.6.7",
+    "cors": "^2.8.5",
+    "firebase-admin": "^12.0.0",
+    "firebase-functions": "^6.0.0",
+    "mercadopago": "^2.0.11",
+    "pdf-parse": "^2.4.5",
+    "uuid": "^9.0.1"
+  },
+  "devDependencies": {
+    "firebase-functions-test": "^3.1.0",
+    "typescript": "^5.0.0"
   },
   "private": true
 }

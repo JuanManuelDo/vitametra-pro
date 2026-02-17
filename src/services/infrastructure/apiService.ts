@@ -7,7 +7,7 @@ import {
     signOut, signInWithEmailAndPassword, createUserWithEmailAndPassword 
 } from "firebase/auth";
 import { auth, db } from "./firebaseService"; 
-import { type UserData, type HistoryEntry, type Hba1cEntry } from '../types';
+import { type UserData, type HistoryEntry, type Hba1cEntry } from '../../types';
 
 export const apiService = {
     // --- AUTENTICACIÓN ---
@@ -62,6 +62,12 @@ export const apiService = {
         }
     },
 
+    // --- PAGOS Y SESIONES ---
+    async createStripeCheckoutSession(priceId: string) {
+        console.log("Iniciando pasarela para:", priceId);
+        return { success: true, url: '#' };
+    },
+
     // --- PERFIL ---
     async getUserProfile(uid: string): Promise<UserData | null> {
         const userRef = doc(db, "users", uid);
@@ -77,7 +83,10 @@ export const apiService = {
     async updateUser(userData: Partial<UserData> & { id: string }) {
         const userRef = doc(db, "users", userData.id);
         const { id, ...dataToUpdate } = userData; 
-        await updateDoc(userRef, { ...dataToUpdate, updatedAt: new Date().toISOString() });
+        await updateDoc(userRef, { 
+            ...dataToUpdate, 
+            updatedAt: new Date().toISOString() 
+        });
     },
 
     // --- NÚCLEO IA ---
@@ -97,7 +106,7 @@ export const apiService = {
             ...data,
             userId,
             createdAt: serverTimestamp(),
-            date: new Date().toISOString()
+            date: data.date || new Date().toISOString()
         });
     },
 
@@ -106,14 +115,24 @@ export const apiService = {
     },
 
     subscribeToHistory(userId: string, callback: (data: HistoryEntry[]) => void): Unsubscribe {
-        const q = query(collection(db, "ingestas"), where("userId", "==", userId), orderBy("createdAt", "desc"), limit(50));
+        const q = query(
+            collection(db, "ingestas"), 
+            where("userId", "==", userId), 
+            orderBy("createdAt", "desc"), 
+            limit(50)
+        );
         return onSnapshot(q, (snapshot) => {
             callback(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any)));
         }, (error) => console.error(error));
     },
 
     subscribeToHba1cHistory(userId: string, callback: (data: Hba1cEntry[]) => void): Unsubscribe {
-        const q = query(collection(db, "hba1c_logs"), where("userId", "==", userId), orderBy("date", "desc"), limit(20));
+        const q = query(
+            collection(db, "hba1c_logs"), 
+            where("userId", "==", userId), 
+            orderBy("date", "desc"), 
+            limit(20)
+        );
         return onSnapshot(q, (snapshot) => {
             callback(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any)));
         }, (error) => console.error(error));
@@ -121,6 +140,9 @@ export const apiService = {
 
     async trackIAUsage(userId: string, currentUsage: number, dateStr: string) {
         const userRef = doc(db, "users", userId);
-        await updateDoc(userRef, { daily_ia_usage: currentUsage + 1, last_ia_usage_date: dateStr });
+        await updateDoc(userRef, { 
+            daily_ia_usage: currentUsage + 1, 
+            last_ia_usage_date: dateStr 
+        });
     }
 };

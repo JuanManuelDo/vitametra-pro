@@ -1,126 +1,126 @@
-
-import * as admin from "firebase-admin";
+import { initializeApp, getApps } from "firebase-admin/app";
+import { getFirestore, Timestamp, FieldValue } from "firebase-admin/firestore";
+import * as functions from "firebase-functions";
+import { onRequest } from "firebase-functions/v2/https"; 
 import express from "express";
 import cors from "cors";
-import Stripe from "stripe";
+import axios from "axios";
+import { v4 as uuidv4 } from 'uuid';
 
-// Inicialización de Firebase
-if (!admin.apps.length) {
-  admin.initializeApp();
+if (getApps().length === 0) {
+  initializeApp();
 }
 
-const db = admin.firestore();
+const db = getFirestore();
 const app = express();
 
-// --- CONFIGURACIÓN DE SEGURIDAD & CORS ---
-const whitelist = ['https://vitametra.com', 'https://vitametras.web.app', 'https://vitametras.firebaseapp.com'];
-const corsOptions = {
+const whitelist = [
+  'https://vitametra.com', 
+  'https://vitametras.web.app', 
+  'https://vitametras.firebaseapp.com',
+  'https://vitametra-pro.web.app',
+  'http://localhost:5173'
+];
+
+app.use(cors({
   origin: (origin: any, callback: any) => {
     if (!origin || whitelist.indexOf(origin) !== -1 || origin.includes('localhost')) {
       callback(null, true);
     } else {
-      callback(new Error('CORS Policy: Dominio no autorizado por VitaMetra Security.'));
+      callback(new Error('CORS Policy: Error de seguridad VitaMetra.'));
     }
   },
-  methods: ['POST', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
-};
+}) as any);
 
-app.use(cors(corsOptions) as any);
 app.use(express.json());
 
-// Middleware para forzar JSON y evitar error "Unexpected token <"
-app.use((req, res, next) => {
-    res.setHeader('Content-Type', 'application/json');
-    next();
-});
-
-/**
- * ENDPOINT: Procesar Pago Google Pay vía Stripe
- * Este endpoint recibe el token de Google Pay y ejecuta el cargo.
- */
-app.post('/processGooglePayStripe', async (req, res) => {
-    // Captura global de errores para evitar respuestas HTML
+app.post('/processPayment', async (req: any, res: any) => {
     try {
-        const { paymentToken, amount, currency, userId } = req.body;
+        const { token, issuer_id, payment_method_id, installments, planId, amount, userId, email } = req.body;
 
-        // 1. Validaciones Básicas
-        if (!paymentToken || !userId || !amount) {
-            return res.status(400).json({ 
-                success: false, 
-                error: "Datos de transacción insuficientes (Token/UID faltante)." 
-            });
+        if (!token || !userId || !amount) {
+            return res.status(400).json({ success: false, error: "Datos incompletos." });
         }
 
-        // 2. Inicializar Stripe (Uso de Secrets Manager recomendado)
-        // El API Key debe configurarse en Firebase: firebase functions:secrets:set STRIPE_SECRET_KEY
-        const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "", {
-            apiVersion: '2025-01-27' as any,
-        });
+        // Recuperamos el Secret configurado en Firebase
+        const ACCESS_TOKEN = process.env.MP_ACCESS_TOKEN;
 
-        console.log(`[FINTECH LOG] Iniciando cargo Stripe para UID: ${userId}`);
+        console.log(`[PAYMENT START] UID: ${userId} | Plan: ${planId} | Amount: ${amount}`);
 
-        // 3. Crear el Cargo en Stripe
-        const charge = await stripe.charges.create({
-            amount: Math.round(amount * 100), // Stripe usa centavos
-            currency: currency || 'usd',
-            source: paymentToken,
-            description: `VitaMetra PRO - Suscripción de ${userId}`,
-            metadata: { userId }
-        });
+        const mpResponse = await axios.post(
+            "https://api.mercadopago.com/v1/payments",
+            {
+                token,
+                issuer_id,
+                payment_method_id,
+                transaction_amount: Number(amount),
+                installments: Number(installments),
+                description: `Vitametra Plan: ${planId}`,
+                payer: { email: email || 'usuario@vitametra.com' },
+                // Importante para reconciliación de datos
+                metadata: { user_id: userId, plan_id: planId }
+            },
+            {
+                headers: {
+                    Authorization: `Bearer ${ACCESS_TOKEN}`,
+                    "Content-Type": "application/json",
+                    "X-Idempotency-Key": uuidv4()
+                }
+            }
+        );
 
-        if (charge.status === 'succeeded') {
-            // 4. Actualización Atómica en Firestore
+        const paymentData = mpResponse.data;
+
+        if (paymentData.status === 'approved') {
             const userRef = db.collection("users").doc(userId);
             const batch = db.batch();
+
+            // Cálculo de días según plan
+            let days = 30;
+            if (planId === 'quarterly') days = 90;
+            if (planId === 'annual') days = 365;
 
             batch.update(userRef, {
                 subscription_tier: 'PRO',
                 is_premium: true,
-                premium_until: admin.firestore.Timestamp.fromDate(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)),
-                last_payment_id: charge.id,
-                updatedAt: admin.firestore.FieldValue.serverTimestamp()
+                premium_until: Timestamp.fromDate(new Date(Date.now() + days * 24 * 60 * 60 * 1000)),
+                last_payment_id: paymentData.id,
+                plan_active: planId,
+                updatedAt: FieldValue.serverTimestamp()
             });
 
-            // Registro en auditoría
-            const auditRef = db.collection("logs_pagos").doc();
+            // Log de auditoría
+            const auditRef = db.collection("logs_pagos").doc(paymentData.id.toString());
             batch.set(auditRef, {
                 userId,
-                stripeId: charge.id,
-                amount,
-                status: 'SUCCESS',
-                timestamp: admin.firestore.FieldValue.serverTimestamp()
+                paymentId: paymentData.id,
+                amount: amount,
+                status: 'approved',
+                planId: planId,
+                timestamp: FieldValue.serverTimestamp()
             });
 
             await batch.commit();
-
-            return res.status(200).json({ 
-                success: true, 
-                message: "Suscripción activada con éxito.",
-                transactionId: charge.id
-            });
+            console.log(`[PAYMENT SUCCESS] UID: ${userId} ahora es PRO.`);
+            return res.status(200).json({ success: true, status: 'approved', transactionId: paymentData.id });
         } else {
-            throw new Error(`Stripe retornó estatus: ${charge.status}`);
+            console.log(`[PAYMENT REJECTED] Status: ${paymentData.status} | Detail: ${paymentData.status_detail}`);
+            return res.status(200).json({ 
+                success: false, 
+                status: paymentData.status, 
+                error: "El pago fue rechazado por la entidad bancaria." 
+            });
         }
 
     } catch (error: any) {
-        console.error("[CRITICAL PAYMENT ERROR]:", error.message);
-        
-        // Manejo de errores específicos de Stripe para el frontend
-        const errorMessage = error.type === 'StripeCardError' 
-            ? "Tu tarjeta fue rechazada. Por favor verifica los datos." 
-            : "Error interno en la pasarela de pagos.";
-
-        return res.status(500).json({ 
-            success: false, 
-            error: errorMessage,
-            code: error.code || 'PAYMENT_ENGINE_FAIL'
-        });
+        console.error("[ERROR MP FATAL]:", error.response?.data || error.message);
+        return res.status(500).json({ success: false, error: "Error en el motor de pagos. Intente más tarde." });
     }
 });
 
-const PORT = process.env.PORT || 8080;
-app.listen(PORT, () => {
-  console.log(`Cloud Gateway VitaMetra activo en puerto ${PORT}`);
-});
+// Exportamos la API usando Secrets para mayor seguridad
+export const api = onRequest({ 
+    secrets: ["MP_ACCESS_TOKEN"],
+    cors: true // Habilitamos CORS nativo de 2nd Gen también
+}, app as any);

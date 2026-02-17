@@ -1,141 +1,132 @@
 import React, { useState } from 'react';
-import { X, Mail, Lock, Loader2, AlertCircle, ChevronRight, Sparkles, Heart } from 'lucide-react';
-import { apiService } from '../../services/apiService';
+import { motion, AnimatePresence } from 'framer-motion';
+import { X, Mail, Lock, Loader2, ArrowRight, ShieldCheck } from 'lucide-react';
+// RUTAS CORREGIDAS A LA NUEVA ESTRUCTURA
+import { apiService } from '../../services/infrastructure/apiService';
+import { authService } from '../../services/infrastructure/firebaseService';
+import type { UserData } from '../../types';
 
 interface LoginModalProps {
+  isOpen: boolean;
   onClose: () => void;
-  onLoginSuccess: () => void;
+  onLoginSuccess: (user: UserData) => void;
 }
 
-const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLoginSuccess }) => {
-  const [isRegistering, setIsRegistering] = useState(false);
+const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLoginSuccess }) => {
+  const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
-  // REDACCIÓN CLÍNICA DE ERRORES:
-  const translateError = (code: string) => {
-    switch (code) {
-      case 'auth/user-not-found': 
-        return "Identidad no localizada en el registro clínico.";
-      case 'auth/wrong-password': 
-        return "Fallo en la verificación de credenciales de acceso.";
-      case 'auth/invalid-email': 
-        return "Formato de identificador digital no reconocido.";
-      case 'auth/weak-password': 
-        return "Protocolo de seguridad insuficiente: mínimo 6 caracteres.";
-      case 'auth/email-already-in-use': 
-        return "Este registro ya se encuentra activo en el ecosistema.";
-      default: 
-        return "Interrupción en el protocolo de sincronización segura.";
-    }
-  };
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
-    setErrorMessage(null);
+    setLoading(true);
+    setError(null);
+
     try {
-      if (isRegistering) {
-        await apiService.register(email, password);
+      if (isLogin) {
+        const user = await apiService.login(email, password);
+        onLoginSuccess(user);
+        onClose();
       } else {
-        await apiService.login(email, password);
+        const user = await apiService.register(email, password);
+        onLoginSuccess(user);
+        onClose();
       }
-      onLoginSuccess();
-      onClose();
-    } catch (error: any) {
-      setErrorMessage(translateError(error.code));
+    } catch (err: any) {
+      setError(err.message || 'Error en la autenticación');
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-[1000] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-500">
-      <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-md" onClick={onClose} />
-      
-      <div className="relative bg-white w-full max-w-[480px] rounded-t-[3.5rem] sm:rounded-[4rem] shadow-2xl overflow-hidden border border-white animate-in slide-in-from-bottom-10 duration-700">
-        
-        <div className="absolute -top-24 -left-24 w-80 h-80 bg-blue-600/10 rounded-full blur-[100px]" />
-        <div className="absolute -bottom-24 -right-24 w-80 h-80 bg-emerald-500/10 rounded-full blur-[100px]" />
-
-        <button onClick={onClose} className="absolute top-8 right-8 p-3 text-slate-400 hover:text-slate-900 transition-all z-20 bg-slate-50 rounded-full active:scale-90">
-          <X size={20} />
-        </button>
-
-        <div className="p-10 sm:p-14 relative z-10">
-          <header className="mb-10 text-center sm:text-left">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-50 text-blue-600 text-[10px] font-black uppercase tracking-[0.3em] mb-6">
-              <Sparkles size={14} className="animate-pulse" /> Acceso de precisión
-            </div>
-            <h2 className="text-5xl font-[1000] text-slate-900 tracking-tighter leading-[0.85] mb-2 uppercase italic">
-              {isRegistering ? 'Crear cuenta' : 'Sincronizar'} <br />
-              <span className="text-blue-600">Bio-perfil</span>
-            </h2>
-            <p className="text-slate-400 font-medium text-sm">
-              {isRegistering ? 'Inicia tu optimización metabólica hoy.' : 'Retoma el control de tus métricas.'}
-            </p>
-          </header>
-
-          {errorMessage && (
-            <div className="mb-8 p-5 bg-red-50 border border-red-100 rounded-3xl flex items-center gap-4 text-red-600 animate-in slide-in-from-left-4">
-              <AlertCircle size={20} className="shrink-0" />
-              <span className="text-[10px] font-bold uppercase tracking-widest leading-tight">{errorMessage}</span>
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="relative group">
-              <Mail className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-blue-600 transition-colors" size={18} />
-              <input
-                type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
-                placeholder="Correo electrónico"
-                className="w-full bg-slate-50 border border-slate-100 rounded-3xl py-6 pl-16 pr-8 text-sm font-bold text-slate-900 outline-none focus:ring-4 ring-blue-600/5 focus:bg-white transition-all placeholder:text-slate-300"
-              />
-            </div>
-
-            <div className="relative group">
-              <Lock className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-blue-600 transition-colors" size={18} />
-              <input
-                type="password" required value={password} onChange={(e) => setPassword(e.target.value)}
-                placeholder="Contraseña"
-                className="w-full bg-slate-50 border border-slate-100 rounded-3xl py-6 pl-16 pr-8 text-sm font-bold text-slate-900 outline-none focus:ring-4 ring-blue-600/5 focus:bg-white transition-all placeholder:text-slate-300"
-              />
-            </div>
-
-            <button
-              type="submit" disabled={isLoading}
-              className="w-full bg-slate-900 text-white py-6 rounded-3xl font-bold text-lg shadow-2xl shadow-slate-200 transition-all active:scale-95 flex items-center justify-center gap-3 mt-6 group overflow-hidden"
-            >
-              {isLoading ? <Loader2 className="animate-spin" size={20} /> : (
-                <>
-                  <span className="relative z-10">{isRegistering ? 'Crear perfil clínico' : 'Iniciar sesión'}</span>
-                  <div className="bg-blue-600 p-1.5 rounded-xl group-hover:translate-x-1.5 transition-transform duration-300">
-                    <ChevronRight size={18} strokeWidth={3} />
-                  </div>
-                </>
-              )}
-            </button>
-          </form>
-
-          <button
-            onClick={() => { setIsRegistering(!isRegistering); setErrorMessage(null); }}
-            className="mt-10 w-full group"
+    <AnimatePresence>
+      {isOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            className="relative w-full max-w-md bg-white rounded-[3rem] shadow-2xl overflow-hidden"
           >
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.25em] transition-colors group-hover:text-blue-600">
-              {isRegistering ? "¿Ya eres usuario?" : "¿Aún no tienes acceso?"} 
-              <span className="text-blue-600 ml-2 border-b-2 border-blue-600/30 pb-0.5 group-hover:border-blue-600">Gestionar aquí</span>
-            </p>
-          </button>
-          
-          <div className="mt-12 pt-8 border-t border-slate-50 flex items-center justify-center gap-2">
-            <Heart size={14} className="text-blue-400 fill-blue-400" />
-            <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest">Metabolism-First Design</span>
-          </div>
+            {/* Cabecera con gradiente */}
+            <div className="bg-slate-900 p-8 text-white relative">
+              <button 
+                onClick={onClose}
+                className="absolute top-6 right-6 p-2 hover:bg-white/10 rounded-full transition-colors"
+              >
+                <X size={20} />
+              </button>
+              
+              <div className="flex items-center gap-2 mb-4">
+                <ShieldCheck className="text-blue-400" size={24} />
+                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">
+                  Acceso Seguro Vitametra
+                </span>
+              </div>
+              
+              <h2 className="text-3xl font-[1000] uppercase italic tracking-tighter">
+                {isLogin ? 'Bienvenido' : 'Crear Cuenta'} <br />
+                <span className="text-blue-500">{isLogin ? 'De Vuelta' : 'Médica IA'}</span>
+              </h2>
+            </div>
+
+            <form onSubmit={handleSubmit} className="p-8 space-y-6">
+              <div className="space-y-4">
+                <div className="relative">
+                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                  <input
+                    type="email"
+                    placeholder="Tu email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full pl-12 pr-6 py-4 bg-slate-50 border-2 border-transparent focus:border-blue-600 rounded-2xl outline-none transition-all font-bold"
+                    required
+                  />
+                </div>
+                
+                <div className="relative">
+                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                  <input
+                    type="password"
+                    placeholder="Tu contraseña"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full pl-12 pr-6 py-4 bg-slate-50 border-2 border-transparent focus:border-blue-600 rounded-2xl outline-none transition-all font-bold"
+                    required
+                  />
+                </div>
+              </div>
+
+              {error && (
+                <p className="text-red-500 text-[10px] font-black uppercase tracking-widest text-center">
+                  {error}
+                </p>
+              )}
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-5 bg-blue-600 hover:bg-slate-900 text-white rounded-2xl font-black uppercase text-xs tracking-[0.2em] transition-all flex items-center justify-center gap-3 shadow-xl shadow-blue-100"
+              >
+                {loading ? <Loader2 className="animate-spin" /> : isLogin ? 'Entrar Ahora' : 'Empezar Registro'}
+                {!loading && <ArrowRight size={16} />}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsLogin(!isLogin)}
+                className="w-full text-center text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-blue-600 transition-colors"
+              >
+                {isLogin ? '¿No tienes cuenta? Regístrate' : '¿Ya eres usuario? Inicia sesión'}
+              </button>
+            </form>
+          </motion.div>
         </div>
-      </div>
-    </div>
+      )}
+    </AnimatePresence>
   );
 };
 

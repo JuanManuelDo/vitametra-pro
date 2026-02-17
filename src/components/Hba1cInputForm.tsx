@@ -4,7 +4,8 @@ import Spinner from './ui/Spinner'
 import { XMarkIcon } from './ui/Icons'
 
 interface Hba1cInputFormProps {
-  onSave: (entryData: { value: number; unit: 'PERCENT' | 'MMOL_MOL'' date: string; id?: string }) => Promise<void>;
+  // Corregido: Se añadió la coma faltante después de 'MMOL_MOL'
+  onSave: (entryData: { value: number; unit: 'PERCENT' | 'MMOL_MOL'; date: string; id?: string }) => Promise<void>;
   entryToEdit?: Hba1cEntry | null;
   onCancel?: () => void;
   isCompact?: boolean;
@@ -31,12 +32,12 @@ const Hba1cInputForm: React.FC<Hba1cInputFormProps> = ({ onSave, entryToEdit, on
     const numValue = parseFloat(value);
     if (isNaN(numValue) || numValue <= 0) return null;
 
-    // Heuristic for display: if value < 20, assume it's %, otherwise mmol/mol for calculation
+    // Heurística: si es < 20 asumimos %, si no mmol/mol
     const isLikelyPercent = numValue < 20;
     
     let percentValue = numValue;
     if (!isLikelyPercent) {
-      // Convert mmol/mol to %
+      // Convertir mmol/mol a %
       percentValue = (0.0915 * numValue) + 2.15;
     }
 
@@ -144,13 +145,13 @@ const Hba1cInputForm: React.FC<Hba1cInputFormProps> = ({ onSave, entryToEdit, on
       
       {confirmData && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 animate-fade-in">
-          <div className="bg-brand-surface p-6 rounded-xl shadow-2xl w-full max-w-sm relative">
+          <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-2xl w-full max-w-sm relative">
              <button onClick={() => setConfirmData(null)} className="absolute top-3 right-3 text-slate-400 hover:text-slate-600">
                 <XMarkIcon className="w-6 h-6" />
             </button>
             <h3 className="text-xl font-bold text-brand-primary mb-2">Confirmar Unidad</h3>
-            <p className="text-slate-600 mb-4">
-                Estás registrando el valor <strong className="text-slate-800">{confirmData.value}</strong>.
+            <p className="text-slate-600 dark:text-slate-400 mb-4">
+                Estás registrando el valor <strong className="text-slate-800 dark:text-white">{confirmData.value}</strong>.
                 Por favor, confirma la unidad de medida correcta.
             </p>
             <div className="mt-6 flex flex-col space-y-3">

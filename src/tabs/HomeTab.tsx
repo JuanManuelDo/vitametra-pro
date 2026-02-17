@@ -1,163 +1,275 @@
-import React from 'react';
-import { Brain, Sparkles, ArrowRight, Zap, Target, Shield, Heart } from 'lucide-react';
-import { motion } from 'framer-motion';
-import SimplifiedHome from '../components/SimplifiedHome';
+import React, { useState, useMemo } from 'react';
+import { 
+  ArrowRight, 
+  Sparkles, 
+  Shield, 
+  Activity, 
+  TrendingUp, 
+  Calendar, 
+  Plus, 
+  AlertCircle,
+  CheckCircle2,
+  BarChart3,
+  BrainCircuit
+} from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { 
+  LineChart, 
+  Line, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  ResponsiveContainer,
+  ReferenceLine 
+} from 'recharts';
+import { motion, AnimatePresence } from 'framer-motion';
+
+// IMPORTACIONES DE SERVICIOS E INFRAESTRUCTURA ACTUALIZADAS
+import { apiService } from '../services/infrastructure/apiService';
+import { MetraCore } from '../services/ai/metraCore';
+import InsightCard from '../components/ui/InsightCard';
 import type { UserData, HistoryEntry } from '../types';
 
 interface HomeTabProps {
   currentUser: UserData | null;
-  history?: HistoryEntry[];
   onStartClick: () => void;
+  history: HistoryEntry[];
 }
 
-const HomeTab: React.FC<HomeTabProps> = ({ currentUser, history = [], onStartClick }) => {
-  if (currentUser) {
-    return <SimplifiedHome currentUser={currentUser} history={history} />;
-  }
+const HomeTab: React.FC<HomeTabProps> = ({ currentUser, onStartClick, history = [] }) => {
+  const navigate = useNavigate();
+  const [quickGlucose, setQuickGlucose] = useState<string>('');
+  const [isSaving, setIsSaving] = useState(false);
+  const [feedback, setFeedback] = useState<{ type: 'success' | 'error', msg: string } | null>(null);
+
+  // 1. Lógica de IA: Análisis Proactivo de Tendencias
+  const insights = useMemo(() => {
+    if (!currentUser || !history.length) return [];
+    return MetraCore.analyzeMetabolicTrends(history, currentUser);
+  }, [history, currentUser]);
+
+  // 2. Lógica de Gráfico (Tendencia Semanal)
+  const chartData = useMemo(() => {
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    return history
+      .filter(entry => new Date(entry.timestamp) >= sevenDaysAgo)
+      .map(entry => ({
+        time: new Date(entry.timestamp).toLocaleDateString('es-CL', { weekday: 'short' }),
+        value: entry.value,
+        fullDate: new Date(entry.timestamp).getTime()
+      }))
+      .sort((a, b) => a.fullDate - b.fullDate);
+  }, [history]);
+
+  const handleQuickLog = async () => {
+    const val = parseFloat(quickGlucose);
+    
+    if (!val || val <= 0) {
+      setFeedback({ type: 'error', msg: 'Ingresa un valor válido mayor a 0' });
+      return;
+    }
+    if (val > 600) {
+      setFeedback({ type: 'error', msg: 'Valor fuera de rango clínico normal' });
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      if (!currentUser?.id) throw new Error("Inicia sesión primero");
+      
+      await apiService.addHistoryEntry(currentUser.id, {
+        value: val,
+        timestamp: new Date().toISOString(),
+        type: 'GLUCOSE',
+        notes: 'Registro rápido desde Inicio'
+      });
+
+      setFeedback({ type: 'success', msg: 'Glucemia guardada' });
+      setQuickGlucose('');
+      setTimeout(() => setFeedback(null), 3000);
+    } catch (e: any) {
+      setFeedback({ type: 'error', msg: e.message });
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-white overflow-x-hidden font-sans selection:bg-blue-100">
-      <div className="fixed top-0 left-1/2 -translate-x-1/2 w-full h-[800px] pointer-events-none -z-10">
-        <div className="absolute top-[5%] left-[-10%] w-[40%] h-[40%] bg-blue-400/5 blur-[120px] rounded-full" />
-        <div className="absolute top-[10%] right-[-5%] w-[30%] h-[30%] bg-emerald-300/5 blur-[100px] rounded-full" />
-      </div>
+    <div className="max-w-6xl mx-auto space-y-10 pb-20 px-4 md:px-0">
+      
+      {/* SECCIÓN HERO - IA DE GRADO CLÍNICO */}
+      <section className="relative overflow-hidden bg-white rounded-[4rem] border border-slate-100 p-8 md:p-16 shadow-sm text-center">
+        <div className="absolute top-0 right-0 p-10 opacity-5 pointer-events-none">
+           <Activity size={240} />
+        </div>
 
-      <section className="relative pt-32 pb-20 px-6 max-w-7xl mx-auto">
-        <div className="text-center">
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-slate-50 border border-slate-200 mb-8"
-          >
-            <Sparkles size={14} className="text-blue-500" />
-            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Inteligencia para la Diabetes</span>
-          </motion.div>
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-blue-50 text-blue-600 text-[10px] font-black uppercase tracking-[0.25em] mb-10"
+        >
+          <Sparkles size={14} className="animate-pulse" /> Ecosistema Vitametra 2026
+        </motion.div>
 
-          <motion.h1 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-6xl md:text-[110px] font-[1000] tracking-tight text-slate-900 leading-[0.85] mb-10 italic uppercase"
-          >
-            Tu control de glucosa, <br/>
-            <span className="bg-gradient-to-r from-blue-600 via-blue-500 to-emerald-500 bg-clip-text text-transparent">
-              simplificado.
-            </span>
-          </motion.h1>
+        <h1 className="text-5xl md:text-8xl font-[1000] text-slate-900 tracking-tighter leading-[0.85] uppercase italic mb-10">
+          Tu salud <br />
+          <span className="text-blue-600">Automatizada</span>
+        </h1>
 
-          <motion.p 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.2 }}
-            className="max-w-2xl mx-auto text-lg md:text-xl text-slate-500 font-medium mb-12 leading-relaxed"
-          >
-            Registra, analiza y comprende tus datos con apoyo de <span className="text-slate-900">IA diseñada específicamente</span> para personas con diabetes.
-          </motion.p>
-
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="flex flex-col sm:flex-row items-center justify-center gap-4"
-          >
+        <div className="max-w-md mx-auto mb-12">
+          <div className="relative group">
+            <input 
+              type="number" 
+              placeholder="Ingresa tu glucosa actual..."
+              value={quickGlucose}
+              onChange={(e) => setQuickGlucose(e.target.value)}
+              className="w-full px-8 py-6 bg-slate-50 border-2 border-transparent focus:border-blue-600 focus:bg-white rounded-[2rem] text-xl font-black outline-none transition-all placeholder:text-slate-300 placeholder:italic"
+            />
             <button 
-              onClick={onStartClick}
-              className="group relative w-full sm:w-auto bg-slate-900 text-white px-10 py-5 rounded-2xl font-bold text-lg overflow-hidden transition-all hover:scale-[1.02] active:scale-95 shadow-xl shadow-blue-200/50"
+              onClick={handleQuickLog}
+              disabled={isSaving}
+              className="absolute right-3 top-3 bottom-3 px-6 bg-blue-600 text-white rounded-[1.5rem] font-black uppercase text-[10px] tracking-widest hover:bg-slate-900 transition-all flex items-center gap-2"
             >
-              <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-emerald-500 opacity-0 group-hover:opacity-100 transition-opacity" />
-              <span className="relative flex items-center justify-center gap-3">
-                Comenzar ahora <ArrowRight size={20} />
-              </span>
+              {isSaving ? '...' : <><Plus size={16} /> Log</>}
             </button>
-            <button 
-              onClick={onStartClick}
-              className="w-full sm:w-auto bg-white text-slate-900 px-10 py-5 rounded-2xl font-bold text-lg border border-slate-200 hover:bg-slate-50 transition-all"
-            >
-              Ver planes Chile
-            </button>
-          </motion.div>
+          </div>
+
+          <AnimatePresence>
+            {feedback && (
+              <motion.p 
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className={`mt-4 text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 ${feedback.type === 'error' ? 'text-red-500' : 'text-emerald-500'}`}
+              >
+                {feedback.type === 'error' ? <AlertCircle size={14} /> : <CheckCircle2 size={14} />}
+                {feedback.msg}
+              </motion.p>
+            )}
+          </AnimatePresence>
+        </div>
+
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+          <button 
+            onClick={onStartClick}
+            className="w-full sm:w-auto px-10 py-6 bg-slate-900 text-white rounded-[2rem] font-black uppercase text-xs tracking-widest flex items-center justify-center gap-3 hover:bg-blue-600 transition-all active:scale-95 shadow-2xl shadow-slate-200"
+          >
+            {currentUser ? 'Iniciar Análisis IA' : 'Comenzar ahora'} <ArrowRight size={18} />
+          </button>
         </div>
       </section>
 
-      <section className="px-6 py-20 max-w-7xl mx-auto">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <FeatureCard 
-            icon={<Brain className="text-blue-600" />}
-            title="Análisis Predictivo"
-            desc="Modelado basado en redes neuronales que te ayuda a entender el impacto de cada comida en tu cuerpo."
-            color="bg-blue-50"
-          />
-          <FeatureCard 
-            icon={<Target className="text-emerald-500" />}
-            title="Bio-Optimización"
-            desc="Sincroniza tus objetivos de salud con recomendaciones nutricionales de alta precisión."
-            color="bg-emerald-50"
-          />
-          <FeatureCard 
-            icon={<Shield className="text-slate-900" />}
-            title="Protocolo de Datos"
-            desc="Privacidad de grado clínico con encriptado de extremo a extremo para tu total tranquilidad."
-            color="bg-slate-100"
-          />
-        </div>
-      </section>
-
-      <section className="py-24 bg-slate-900 text-white rounded-[3rem] mx-4 mb-10 overflow-hidden relative">
-        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10" />
-        <div className="max-w-6xl mx-auto px-10 relative z-10">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-            <div>
-              <h2 className="text-4xl md:text-5xl font-black mb-8 leading-tight italic uppercase">
-                Ciencia Predictiva, <br/>Vida Real.
-              </h2>
-              <div className="space-y-6">
-                <MetricItem label="Latencia de Procesamiento" value="< 1.1s" />
-                <MetricItem label="Precisión del Modelo" value="98.4%" />
-                <MetricItem label="Indice de Adherencia" value="94.2%" />
-              </div>
-            </div>
-            <div className="bg-white/5 backdrop-blur-xl rounded-[2.5rem] p-10 border border-white/10 shadow-2xl">
-              <div className="flex items-center gap-4 mb-6">
-                <div className="w-12 h-12 rounded-full bg-blue-500 flex items-center justify-center">
-                  <Zap size={24} className="text-white fill-current" />
-                </div>
-                <div>
-                  <p className="font-bold text-xl uppercase italic">Estado: Optimizado</p>
-                  <p className="text-blue-400 text-xs font-black uppercase tracking-widest">Nodos IA Activos</p>
-                </div>
-              </div>
-              <p className="text-slate-400 leading-relaxed italic text-lg">
-                "Vitametra ha transformado mi gestión metabólica de una tarea reactiva a una estrategia proactiva basada en datos reales."
-              </p>
-            </div>
+      {/* --- NUEVA SECCIÓN: ANÁLISIS PROACTIVO IA --- */}
+      <section className="space-y-6">
+        <div className="flex items-center gap-4">
+          <div className="p-3 bg-blue-600 text-white rounded-2xl">
+            <BrainCircuit size={24} />
+          </div>
+          <div>
+            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">
+              Metra Cognitive Engine
+            </h3>
+            <h4 className="text-3xl font-[1000] text-slate-900 tracking-tighter uppercase italic">
+              Insights <span className="text-blue-600">Metabólicos</span>
+            </h4>
           </div>
         </div>
+
+        {insights.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {insights.map((ins, i) => (
+              <InsightCard key={i} insight={ins} />
+            ))}
+          </div>
+        ) : (
+          <div className="bg-slate-50 rounded-[3rem] p-10 border-2 border-dashed border-slate-200 text-center">
+            <p className="text-slate-400 text-xs font-black uppercase tracking-widest">
+              Analizando tu comportamiento...
+            </p>
+            <p className="text-slate-300 text-[10px] font-bold italic mt-2">
+              Registra más comidas y glucemias para activar las recomendaciones inteligentes.
+            </p>
+          </div>
+        )}
       </section>
 
-      <footer className="py-12 text-center text-slate-400 text-[10px] font-black uppercase tracking-[0.4em]">
-        © 2026 Vitametra Chile • Precision Metabolism
+      {/* MÓDULO DE TENDENCIA SEMANAL */}
+      <section className="bg-white rounded-[3rem] border border-slate-100 p-8 md:p-12 shadow-sm">
+        <div className="flex justify-between items-start mb-10">
+          <div>
+            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2 flex items-center gap-2">
+              <TrendingUp size={14} className="text-blue-600" /> Biometría Predictiva
+            </h3>
+            <h4 className="text-3xl font-[1000] text-slate-900 tracking-tighter uppercase italic">
+              Tendencia <span className="text-blue-600">Semanal</span>
+            </h4>
+          </div>
+          <div className="p-3 bg-slate-50 rounded-2xl text-slate-400">
+            <Calendar size={20} />
+          </div>
+        </div>
+
+        <div className="h-[300px] w-full flex items-center justify-center">
+          {chartData.length > 0 ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <XAxis 
+                  dataKey="time" 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{ fontSize: 10, fontWeight: 900, fill: '#cbd5e1' }}
+                  dy={10}
+                />
+                <YAxis hide domain={['dataMin - 20', 'dataMax + 20']} />
+                <Tooltip 
+                  contentStyle={{ borderRadius: '1rem', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', fontSize: '12px', fontWeight: '900' }}
+                  cursor={{ stroke: '#2563eb', strokeWidth: 1 }}
+                />
+                <ReferenceLine y={100} stroke="#e2e8f0" strokeDasharray="5 5" />
+                <Line 
+                  type="monotone" 
+                  dataKey="value" 
+                  stroke="#2563eb" 
+                  strokeWidth={5} 
+                  dot={{ r: 6, fill: '#2563eb', strokeWidth: 2, stroke: '#fff' }}
+                  activeDot={{ r: 10, strokeWidth: 0 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          ) : (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="text-center space-y-4"
+            >
+              <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center mx-auto text-slate-200">
+                <BarChart3 size={32} />
+              </div>
+              <p className="text-sm font-bold text-slate-400 max-w-[220px] mx-auto italic">
+                Aún no hay suficientes datos para mostrar la tendencia semanal.
+              </p>
+            </motion.div>
+          )}
+        </div>
+      </section>
+
+      {/* FOOTER DE CONFIANZA TÉCNICA */}
+      <footer className="flex justify-center items-center gap-10 opacity-30 pb-10">
+        <div className="flex items-center gap-2">
+          <Shield size={16} />
+          <span className="text-[9px] font-black uppercase tracking-widest">AES-256 Encrypted</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <Activity size={16} />
+          <span className="text-[9px] font-black uppercase tracking-widest">Health Level Seven v2</span>
+        </div>
       </footer>
     </div>
   );
 };
-
-const FeatureCard = ({ icon, title, desc, color }: any) => (
-  <motion.div 
-    whileHover={{ y: -5 }}
-    className="bg-white p-10 rounded-[2.5rem] border border-slate-100 shadow-sm flex flex-col items-start transition-all"
-  >
-    <div className={`w-16 h-16 ${color} rounded-2xl flex items-center justify-center mb-6`}>
-      {React.cloneElement(icon as React.ReactElement, { size: 28 })}
-    </div>
-    <h3 className="text-xl font-black text-slate-900 mb-3 tracking-tight italic uppercase">{title}</h3>
-    <p className="text-slate-500 leading-relaxed text-sm font-bold">{desc}</p>
-  </motion.div>
-);
-
-const MetricItem = ({ label, value }: { label: string; value: string }) => (
-  <div className="flex justify-between items-center border-b border-white/10 pb-4">
-    <span className="text-slate-400 font-bold uppercase text-[10px] tracking-widest">{label}</span>
-    <span className="text-2xl font-[1000] italic text-blue-400">{value}</span>
-  </div>
-);
 
 export default HomeTab;

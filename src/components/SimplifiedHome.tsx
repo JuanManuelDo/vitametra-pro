@@ -1,8 +1,9 @@
 import React, { useState, useMemo } from 'react';
-import { CheckCircle2, Plus, Activity, Syringe, Calendar, ChevronRight, Sparkles, X } from 'lucide-react';
+import { CheckCircle2, Plus, Activity, Calendar, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { UserData, HistoryEntry } from '../types';
-import { apiService } from '../services/apiService';
+// RUTA CORREGIDA
+import { apiService } from '../services/infrastructure/apiService';
 
 interface SimplifiedHomeProps {
     currentUser: UserData | null;
@@ -44,7 +45,8 @@ const SimplifiedHome: React.FC<SimplifiedHomeProps> = ({ currentUser, history })
                 finalInsulinUnits: parseFloat(insulin),
                 userInput: "Registro manual matutino",
                 totalCarbs: 0,
-                isCalibrated: false
+                isCalibrated: false,
+                date: new Date().toISOString()
             });
             setIsLogModalOpen(false);
             setGlucose('');

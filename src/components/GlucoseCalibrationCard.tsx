@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
-import { Activity, CheckCircle2, ChevronRight, Info } from 'lucide-react'
-import { apiService } from '../services/apiService'
+import { Activity, CheckCircle2, Info } from 'lucide-react'
+// RUTA CORREGIDA
+import { apiService } from '../services/infrastructure/apiService'
 import type { HistoryEntry } from '../types'
 
 interface Props {
@@ -17,9 +18,13 @@ export const GlucoseCalibrationCard: React.FC<Props> = ({ entry, onCalibrated })
     
     setIsSubmitting(true);
     try {
-      await apiService.updateHistoryEntry(entry.userId, entry.id, {
-        actualGlucose: Number(glucose),
-        isCalibrated: true
+      // Usamos updateUser o saveHistoryEntry según la lógica de tu API
+      // Aquí actualizamos el registro existente para añadir la glucosa post-prandial
+      await apiService.saveHistoryEntry(entry.userId, {
+        ...entry,
+        bloodGlucoseValue: Number(glucose),
+        isCalibrated: true,
+        userInput: `Calibración post-comida: ${entry.foodName || 'Ingesta'}`
       });
       onCalibrated();
     } catch (error) {
@@ -44,7 +49,7 @@ export const GlucoseCalibrationCard: React.FC<Props> = ({ entry, onCalibrated })
         Entrenamiento de IA en curso
       </h3>
       <p className="text-blue-100 text-xs font-medium mb-6 opacity-90">
-        ¿Cuál fue tu glucosa 2h después de comer <span className="font-black text-white underline decoration-white/30">{entry.foodName || 'esta comida'}</span>?
+        ¿Cuál fue tu glucosa 2h después de comer <span className="font-black text-white underline decoration-white/30">{entry.userInput || 'esta comida'}</span>?
       </p>
 
       <div className="flex gap-3">

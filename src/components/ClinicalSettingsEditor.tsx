@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Activity, Save } from 'lucide-react';
-import { apiService } from '../services/apiService';
+// RUTA CORREGIDA: Desde src/components subimos a src/ con ../ y entramos a services
+import { apiService } from '../services/infrastructure/apiService';
 import type { UserData, DiabetesType } from '../types';
 
 interface ClinicalSettingsEditorProps {
@@ -33,12 +34,20 @@ const ClinicalSettingsEditor: React.FC<ClinicalSettingsEditorProps> = ({ current
         ]
       };
 
+      // Se pasa el objeto completo para asegurar compatibilidad con la firma de updateUser
       await apiService.updateUser(updatedProfile as UserData);
       onUpdate(updatedProfile);
-      alert("✅ Parámetros recalibrados con éxito");
+      
+      // Feedback táctil/visual profesional
+      const notification = document.createElement('div');
+      notification.className = "fixed bottom-10 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-2xl z-[3000] animate-in slide-in-from-bottom-4";
+      notification.innerText = "✅ PARÁMETROS RECALIBRADOS";
+      document.body.appendChild(notification);
+      setTimeout(() => notification.remove(), 3000);
+
     } catch (error) {
       console.error(error);
-      alert("❌ Error al sincronizar");
+      alert("❌ Error al sincronizar con el Bio-Core");
     } finally {
       setIsSaving(false);
     }
@@ -81,7 +90,7 @@ const ClinicalSettingsEditor: React.FC<ClinicalSettingsEditorProps> = ({ current
             type="range" min="1" max="40" 
             value={config.ratio} 
             onChange={(e) => setConfig({...config, ratio: parseInt(e.target.value)})}
-            className="w-full accent-blue-600"
+            className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
           />
         </div>
 
@@ -95,16 +104,20 @@ const ClinicalSettingsEditor: React.FC<ClinicalSettingsEditorProps> = ({ current
             type="range" min="10" max="200" step="5"
             value={config.isf} 
             onChange={(e) => setConfig({...config, isf: parseInt(e.target.value)})}
-            className="w-full accent-emerald-500"
+            className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-emerald-500"
           />
         </div>
 
         <button 
           onClick={handleSave}
           disabled={isSaving}
-          className="w-full bg-slate-900 text-white p-5 rounded-2xl font-black uppercase text-[10px] tracking-[0.2em] flex items-center justify-center gap-3 transition-all active:scale-95 disabled:opacity-50"
+          className="w-full bg-slate-900 text-white p-5 rounded-2xl font-black uppercase text-[10px] tracking-[0.2em] flex items-center justify-center gap-3 transition-all active:scale-95 disabled:opacity-50 shadow-xl shadow-slate-200 hover:bg-blue-600"
         >
-          {isSaving ? "Guardando..." : <><Save size={16} /> Aplicar Cambios</>}
+          {isSaving ? (
+            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+          ) : (
+            <><Save size={16} /> Aplicar Cambios</>
+          )}
         </button>
       </div>
     </div>

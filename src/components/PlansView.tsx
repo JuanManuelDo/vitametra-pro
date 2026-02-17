@@ -45,7 +45,7 @@ export const PlansView: React.FC<PlansViewProps> = ({ onSelectPlan }) => {
 
   return (
     <div className="w-full max-w-6xl mx-auto px-6 py-20 bg-[#FBFBFE]">
-      {/* HEADER TIPO APPLE HEALTH */}
+      {/* HEADER */}
       <div className="text-center mb-20">
         <motion.div 
           initial={{ opacity: 0, y: 10 }}
@@ -64,7 +64,6 @@ export const PlansView: React.FC<PlansViewProps> = ({ onSelectPlan }) => {
         </p>
       </div>
 
-      {/* GRID DE PLANES */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         {plans.map((plan) => (
           <motion.div 
@@ -116,7 +115,7 @@ export const PlansView: React.FC<PlansViewProps> = ({ onSelectPlan }) => {
                 : 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-200'
               }`}
             >
-              Seleccionar <ArrowRight size={16} />
+              Ver Planes <ArrowRight size={16} />
             </button>
           </motion.div>
         ))}
