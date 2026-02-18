@@ -7,7 +7,8 @@ import {
     signOut, signInWithEmailAndPassword, createUserWithEmailAndPassword 
 } from "firebase/auth";
 import { auth, db } from "./firebaseService"; 
-import { type UserData, type HistoryEntry, type Hba1cEntry } from '../../types';
+// Asegúrate de que la ruta a types sea correcta según tu estructura
+import { type UserData, type HistoryEntry, type Hba1cEntry } from '../types';
 
 export const apiService = {
     // --- AUTENTICACIÓN ---
@@ -99,14 +100,29 @@ export const apiService = {
         }
     },
 
-    // --- HISTORIAL ---
-    async saveHistoryEntry(userId: string, data: Partial<HistoryEntry>) {
+    // --- HISTORIAL Y APRENDIZAJE ---
+    async addHistoryEntry(userId: string, data: Partial<HistoryEntry>) {
         const historyRef = collection(db, "ingestas");
         return await addDoc(historyRef, {
             ...data,
             userId,
             createdAt: serverTimestamp(),
             date: data.date || new Date().toISOString()
+        });
+    },
+
+    /**
+     * CIERRE DE BUCLE (IP VITAMETRA): 
+     * Actualiza un registro de comida con los resultados post-prandiales
+     * para que la IA pueda aprender del éxito del bolo.
+     */
+    async closeLearningLoop(entryId: string, postGlucose: number, successScore: number, notes?: string) {
+        const entryRef = doc(db, "ingestas", entryId);
+        return await updateDoc(entryRef, {
+            postPrandialGlucose: postGlucose,
+            successScore: successScore,
+            closureNotes: notes || "",
+            updatedAt: serverTimestamp()
         });
     },
 

@@ -47,8 +47,10 @@ export interface HistoryEntry {
   id: string;
   userId: string;
   date: string;
+  timestamp?: string; // Añadido para consistencia con apiService
   createdAt: any;
   mealType: MealType;
+  foodName?: string;     // Añadido: para identificar la comida en el recordatorio
   userInput: string;
   totalCarbs: number;
   bloodGlucoseValue?: number;
@@ -56,6 +58,12 @@ export interface HistoryEntry {
   isCalibrated: boolean;
   mood?: string;
   physicalActivityLevel?: 'bajo' | 'medio' | 'alto';
+  type?: 'MEAL' | 'GLUCOSE' | 'EXERCISE'; // Añadido para filtros de IA
+  
+  // --- NÚCLEO DE APRENDIZAJE (CIERRE DE BUCLE) ---
+  postPrandialGlucose?: number; // Glucosa 2h después
+  successScore?: number;        // Puntaje de éxito del bolo (0-1)
+  closureNotes?: string;        // Veredicto final de la IA
 }
 
 export interface UserData {
@@ -63,6 +71,7 @@ export interface UserData {
   firstName: string;
   lastName: string;
   email: string;
+  name?: string; // Alias por si se usa en algunos componentes
   role: UserRole;
   subscription_tier: 'BASE' | 'PRO';
   ia_credits: number;

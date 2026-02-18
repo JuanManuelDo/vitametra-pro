@@ -3,8 +3,8 @@ import {
   LayoutGrid, 
   History, 
   User, 
-  Utensils,    // UX: Mejor que Zap para nutrición
-  Stethoscope   // UX: Mejor que Settings2 para clínico
+  Utensils,    
+  Stethoscope   
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -16,24 +16,24 @@ interface NavigationProps {
 const Navigation: React.FC<NavigationProps> = ({ activeTab, onTabChange }) => {
   
   const tabs = [
-    { id: 'dashboard', label: 'Inicio', icon: <LayoutGrid size={22} />, path: 'dashboard' },
+    { id: 'dashboard', label: 'Hoy', icon: <LayoutGrid size={22} />, path: 'dashboard' },
     { 
       id: 'analyzer', 
-      label: 'Nutrición IA', // Antes: Mente IA
+      label: 'Analizar', 
       icon: <Utensils size={22} />, 
       path: 'analyzer',
       badge: true 
     },
-    { id: 'history', label: 'Progreso', icon: <History size={22} />, path: 'history' },
+    { id: 'history', label: 'Tendencias', icon: <History size={22} />, path: 'history' },
     { 
       id: 'settings', 
-      label: 'Clínico',      // Mantenemos Clínico pero con ícono profesional
+      label: 'Reportes',      
       icon: <Stethoscope size={22} />, 
       path: 'settings' 
     },
     { 
       id: 'profile', 
-      label: 'Perfil',       // Antes: Tú
+      label: 'Perfil',       
       icon: <User size={22} />, 
       path: 'profile' 
     },
@@ -58,31 +58,31 @@ const Navigation: React.FC<NavigationProps> = ({ activeTab, onTabChange }) => {
               {isActive && (
                 <motion.div 
                   layoutId="nav-indicator"
-                  className="absolute -top-3 w-1.5 h-1.5 bg-blue-600 rounded-full shadow-[0_0_10px_#2563EB]"
+                  className="absolute -top-3 w-1.5 h-1.5 bg-indigo-600 rounded-full shadow-[0_0_10px_#4F46E5]"
                   transition={{ type: "spring", stiffness: 380, damping: 30 }}
                 />
               )}
 
-              <div className={`relative transition-all duration-300 transform ${isActive ? 'scale-110 text-blue-600' : 'text-slate-400 group-hover:text-slate-600'}`}>
+              <div className={`relative transition-all duration-300 transform ${isActive ? 'scale-110 text-indigo-600' : 'text-slate-400 group-hover:text-slate-600'}`}>
                 {tab.icon}
                 
                 {/* Badge sutil para la función de IA */}
                 {tab.badge && (
                   <span className="absolute -top-1 -right-1 flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-600"></span>
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-600"></span>
                   </span>
                 )}
               </div>
 
-              <span className={`text-[8px] font-[900] uppercase tracking-[0.05em] mt-1.5 transition-colors duration-300 italic ${isActive ? 'text-blue-600' : 'text-slate-400'}`}>
+              <span className={`text-[8px] font-[900] uppercase tracking-[0.05em] mt-1.5 transition-colors duration-300 italic ${isActive ? 'text-indigo-600' : 'text-slate-400'}`}>
                 {tab.label}
               </span>
 
               {isActive && (
                 <motion.div 
                   layoutId="nav-pill"
-                  className="absolute inset-0 bg-blue-50/50 rounded-2xl -z-10"
+                  className="absolute inset-0 bg-indigo-50/50 rounded-2xl -z-10"
                   transition={{ type: "spring", stiffness: 300, damping: 30 }}
                 />
               )}
