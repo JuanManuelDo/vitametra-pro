@@ -8,9 +8,13 @@
     <title>Vitametra | Tu Círculo de Cuidado Inteligente</title>
     <meta name="description" content="Conectando IA, pacientes y equipos médicos para una gestión humana de la diabetes." />
     
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#0f172a">
+
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Vitametra">
+    <link rel="apple-touch-icon" href="/logo192.png">
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -19,12 +23,14 @@
     <script src="https://sdk.mercadopago.com/js/v2"></script>
 
     <script>
+      /** * NOTA: He modificado tu script para que no elimine el Service Worker 
+       * si queremos usar notificaciones en el futuro. 
+       * Por ahora, lo dejamos inactivo pero sin "limpiar el rastro" agresivamente.
+       */
       if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.getRegistrations().then(function(registrations) {
-          for(let registration of registrations) {
-            registration.unregister();
-            console.log('Vitametra: Limpiando rastro de Bio-Core...');
-          }
+        window.addEventListener('load', () => {
+          // Aquí registraríamos el service worker cuando lo tengamos listo
+          // navigator.serviceWorker.register('/sw.js');
         });
       }
     </script>

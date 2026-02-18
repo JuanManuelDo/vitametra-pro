@@ -42,7 +42,7 @@ app.post('/processPayment', async (req, res) => {
             return res.status(400).json({ success: false, error: "Datos incompletos." });
         }
         const ACCESS_TOKEN = process.env.MP_ACCESS_TOKEN;
-        console.log(`[PAYMENT] Procesando UID: ${userId} | Plan: ${planId}`);
+        console.log(`[PAYMENT START] UID: ${userId} | Plan: ${planId} | Amount: ${amount}`);
         const mpResponse = await axios_1.default.post("https://api.mercadopago.com/v1/payments", {
             token,
             issuer_id,
@@ -82,19 +82,29 @@ app.post('/processPayment', async (req, res) => {
                 paymentId: paymentData.id,
                 amount: amount,
                 status: 'approved',
+                planId: planId,
                 timestamp: firestore_1.FieldValue.serverTimestamp()
             });
             await batch.commit();
+            console.log(`[PAYMENT SUCCESS] UID: ${userId} ahora es PRO.`);
             return res.status(200).json({ success: true, status: 'approved', transactionId: paymentData.id });
         }
         else {
-            return res.status(200).json({ success: false, status: paymentData.status, error: paymentData.status_detail });
+            console.log(`[PAYMENT REJECTED] Status: ${paymentData.status} | Detail: ${paymentData.status_detail}`);
+            return res.status(200).json({
+                success: false,
+                status: paymentData.status,
+                error: "El pago fue rechazado por la entidad bancaria."
+            });
         }
     }
     catch (error) {
-        console.error("[ERROR MP]:", error.response?.data || error.message);
-        return res.status(500).json({ success: false, error: "Error en el motor de pagos." });
+        console.error("[ERROR MP FATAL]:", error.response?.data || error.message);
+        return res.status(500).json({ success: false, error: "Error en el motor de pagos. Intente más tarde." });
     }
 });
-exports.api = (0, https_1.onRequest)({ secrets: ["MP_ACCESS_TOKEN"] }, app);
+exports.api = (0, https_1.onRequest)({
+    secrets: ["MP_ACCESS_TOKEN"],
+    cors: true
+}, app);
 //# sourceMappingURL=index.js.map
