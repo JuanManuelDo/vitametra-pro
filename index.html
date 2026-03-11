@@ -23,14 +23,16 @@
     <script src="https://sdk.mercadopago.com/js/v2"></script>
 
     <script>
-      /** * NOTA: He modificado tu script para que no elimine el Service Worker 
-       * si queremos usar notificaciones en el futuro. 
-       * Por ahora, lo dejamos inactivo pero sin "limpiar el rastro" agresivamente.
-       */
+      // Registro del Service Worker Bio-Core
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          // Aquí registraríamos el service worker cuando lo tengamos listo
-          // navigator.serviceWorker.register('/sw.js');
+          navigator.serviceWorker.register('/sw.js')
+            .then(registration => {
+              console.log('Vitametra: Service Worker registrado con éxito:', registration.scope);
+            })
+            .catch(error => {
+              console.error('Vitametra: Error al registrar el Service Worker:', error);
+            });
         });
       }
     </script>

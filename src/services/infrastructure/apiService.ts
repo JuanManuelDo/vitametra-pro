@@ -7,7 +7,6 @@ import {
     signOut, signInWithEmailAndPassword, createUserWithEmailAndPassword 
 } from "firebase/auth";
 import { auth, db } from "./firebaseService"; 
-// Asegúrate de que la ruta a types sea correcta según tu estructura
 import { type UserData, type HistoryEntry, type Hba1cEntry } from '../types';
 
 export const apiService = {
@@ -47,7 +46,8 @@ export const apiService = {
                 preferences: { dietaryRestrictions: [], favoriteSafeFoods: [] },
                 aiNotes: "Sincronizado con el Bio-Core."
             },
-            glucoseUnitPreference: 'mg/dL'
+            glucoseUnitPreference: 'mg/dL',
+            fcmToken: "" // Inicializamos el campo para notificaciones
         };
 
         await setDoc(doc(db, "users", uid), initialConfig, { merge: true });
@@ -63,13 +63,7 @@ export const apiService = {
         }
     },
 
-    // --- PAGOS Y SESIONES ---
-    async createStripeCheckoutSession(priceId: string) {
-        console.log("Iniciando pasarela para:", priceId);
-        return { success: true, url: '#' };
-    },
-
-    // --- PERFIL ---
+    // --- PERFIL Y CONFIGURACIÓN ---
     async getUserProfile(uid: string): Promise<UserData | null> {
         const userRef = doc(db, "users", uid);
         try {
@@ -81,13 +75,22 @@ export const apiService = {
         }
     },
 
-    async updateUser(userData: Partial<UserData> & { id: string }) {
-        const userRef = doc(db, "users", userData.id);
-        const { id, ...dataToUpdate } = userData; 
-        await updateDoc(userRef, { 
-            ...dataToUpdate, 
-            updatedAt: new Date().toISOString() 
+    /**
+     * Actualiza el perfil de usuario. 
+     * Soporta actualizaciones parciales (incluyendo fcmToken para notificaciones).
+     */
+    async updateUserProfile(userId: string, data: Partial<UserData>) {
+        const userRef = doc(db, "users", userId);
+        return await updateDoc(userRef, { 
+            ...data, 
+            updatedAt: serverTimestamp() 
         });
+    },
+
+    // Alias para compatibilidad con código existente
+    async updateUser(userData: Partial<UserData> & { id: string }) {
+        const { id, ...dataToUpdate } = userData; 
+        return this.updateUserProfile(id, dataToUpdate);
     },
 
     // --- NÚCLEO IA ---

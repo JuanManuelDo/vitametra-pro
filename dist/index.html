@@ -8,9 +8,13 @@
     <title>Vitametra | Tu Círculo de Cuidado Inteligente</title>
     <meta name="description" content="Conectando IA, pacientes y equipos médicos para una gestión humana de la diabetes." />
     
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#0f172a">
+
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Vitametra">
+    <link rel="apple-touch-icon" href="/logo192.png">
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -19,21 +23,25 @@
     <script src="https://sdk.mercadopago.com/js/v2"></script>
 
     <script>
+      // Registro del Service Worker Bio-Core
       if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.getRegistrations().then(function(registrations) {
-          for(let registration of registrations) {
-            registration.unregister();
-            console.log('Vitametra: Limpiando rastro de Bio-Core...');
-          }
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then(registration => {
+              console.log('Vitametra: Service Worker registrado con éxito:', registration.scope);
+            })
+            .catch(error => {
+              console.error('Vitametra: Error al registrar el Service Worker:', error);
+            });
         });
       }
     </script>
-    <script type="module" crossorigin src="/assets/index-ChoiKYYT.js"></script>
-    <link rel="modulepreload" crossorigin href="/assets/vendor-wbDOIdi9.js">
-    <link rel="modulepreload" crossorigin href="/assets/vendor-firebase-ChCoiK1p.js">
-    <link rel="modulepreload" crossorigin href="/assets/vendor-ui-DEgaWfEr.js">
+    <script type="module" crossorigin src="/assets/index-Dhg50sr-.js"></script>
+    <link rel="modulepreload" crossorigin href="/assets/vendor-FZ4tm9KV.js">
+    <link rel="modulepreload" crossorigin href="/assets/vendor-firebase-DcqlEpl1.js">
+    <link rel="modulepreload" crossorigin href="/assets/vendor-ui-B0DB265j.js">
     <link rel="modulepreload" crossorigin href="/assets/vendor-gemini-CZZ1HbHH.js">
-    <link rel="stylesheet" crossorigin href="/assets/index-CF7MaWCa.css">
+    <link rel="stylesheet" crossorigin href="/assets/index-Cl30zSpF.css">
   </head>
   <body class="bg-slate-50">
     <div id="root"></div>

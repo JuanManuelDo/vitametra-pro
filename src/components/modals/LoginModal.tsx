@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Mail, Lock, Loader2, ArrowRight, ShieldCheck } from 'lucide-react';
 // RUTAS CORREGIDAS A LA NUEVA ESTRUCTURA
 import { apiService } from '../../services/infrastructure/apiService';
-import { authService } from '../../services/infrastructure/firebaseService';
 import type { UserData } from '../../types';
 
 interface LoginModalProps {
@@ -51,7 +50,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLoginSuccess
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             className="relative w-full max-w-md bg-white rounded-[3rem] shadow-2xl overflow-hidden"
           >
-            {/* Cabecera con gradiente */}
+            {/* Cabecera con Estilo Vitametra */}
             <div className="bg-slate-900 p-8 text-white relative">
               <button 
                 onClick={onClose}
@@ -61,16 +60,22 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLoginSuccess
               </button>
               
               <div className="flex items-center gap-2 mb-4">
-                <ShieldCheck className="text-blue-400" size={24} />
+                <ShieldCheck className="text-blue-500" size={24} />
                 <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">
                   Acceso Seguro Vitametra
                 </span>
               </div>
               
-              <h2 className="text-3xl font-[1000] uppercase italic tracking-tighter">
-                {isLogin ? 'Bienvenido' : 'Crear Cuenta'} <br />
-                <span className="text-blue-500">{isLogin ? 'De Vuelta' : 'Médica IA'}</span>
+              <h2 className="text-4xl font-[1000] uppercase italic tracking-tighter leading-none">
+                {isLogin ? (
+                  <>BIENVENIDO</>
+                ) : (
+                  <>CREAR <span className="text-blue-500 italic">CUENTA</span></>
+                )}
               </h2>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-2">
+                {isLogin ? 'BIO-IDENTIDAD REQUERIDA' : 'UNIRSE AL ECOSISTEMA MÉDICO IA'}
+              </p>
             </div>
 
             <form onSubmit={handleSubmit} className="p-8 space-y-6">
@@ -79,10 +84,10 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLoginSuccess
                   <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                   <input
                     type="email"
-                    placeholder="Tu email"
+                    placeholder="Email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full pl-12 pr-6 py-4 bg-slate-50 border-2 border-transparent focus:border-blue-600 rounded-2xl outline-none transition-all font-bold"
+                    className="w-full pl-12 pr-6 py-4 bg-slate-50 border-2 border-transparent focus:border-blue-600 focus:bg-white rounded-2xl outline-none transition-all font-bold text-slate-900"
                     required
                   />
                 </div>
@@ -91,17 +96,17 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLoginSuccess
                   <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                   <input
                     type="password"
-                    placeholder="Tu contraseña"
+                    placeholder="Contraseña"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full pl-12 pr-6 py-4 bg-slate-50 border-2 border-transparent focus:border-blue-600 rounded-2xl outline-none transition-all font-bold"
+                    className="w-full pl-12 pr-6 py-4 bg-slate-50 border-2 border-transparent focus:border-blue-600 focus:bg-white rounded-2xl outline-none transition-all font-bold text-slate-900"
                     required
                   />
                 </div>
               </div>
 
               {error && (
-                <p className="text-red-500 text-[10px] font-black uppercase tracking-widest text-center">
+                <p className="text-red-500 text-[10px] font-black uppercase tracking-widest text-center bg-red-50 py-2 rounded-lg">
                   {error}
                 </p>
               )}
@@ -109,19 +114,25 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLoginSuccess
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-5 bg-blue-600 hover:bg-slate-900 text-white rounded-2xl font-black uppercase text-xs tracking-[0.2em] transition-all flex items-center justify-center gap-3 shadow-xl shadow-blue-100"
+                className="w-full py-5 bg-blue-600 hover:bg-slate-900 text-white rounded-2xl font-black uppercase text-xs tracking-[0.2em] transition-all flex items-center justify-center gap-3 shadow-xl shadow-blue-100 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {loading ? <Loader2 className="animate-spin" /> : isLogin ? 'Entrar Ahora' : 'Empezar Registro'}
+                {loading ? (
+                  <Loader2 className="animate-spin" />
+                ) : (
+                  <>{isLogin ? 'Entrar Ahora' : 'Empezar Registro'}</>
+                )}
                 {!loading && <ArrowRight size={16} />}
               </button>
 
-              <button
-                type="button"
-                onClick={() => setIsLogin(!isLogin)}
-                className="w-full text-center text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-blue-600 transition-colors"
-              >
-                {isLogin ? '¿No tienes cuenta? Regístrate' : '¿Ya eres usuario? Inicia sesión'}
-              </button>
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsLogin(!isLogin)}
+                  className="w-full text-center text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-blue-600 transition-colors"
+                >
+                  {isLogin ? '¿No tienes cuenta? Regístrate aquí' : '¿Ya eres usuario? Inicia sesión'}
+                </button>
+              </div>
             </form>
           </motion.div>
         </div>

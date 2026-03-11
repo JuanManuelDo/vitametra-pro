@@ -1,6 +1,6 @@
-import type { TIRResult } from '../engine/tirCalculator.ts'
-import type { VariabilityResult } from '../engine/variabilityCalculator.ts'
-import type { HbA1cResult } from '../clinical/hba1cEstimator.ts'
+import type { TIRResult } from '../engine/tirCalculator'
+import type { VariabilityResult } from '../engine/variabilityCalculator'
+import type { HbA1cResult } from '../clinical/hba1cEstimator'
 
 export interface MetabolicScoreResult {
   score: number
@@ -18,34 +18,43 @@ export function calculateMetabolicScore(
   hba1c: HbA1cResult
 ): MetabolicScoreResult {
 
-  // 1️⃣ TIR Score
-  const tirScore = Math.min(tir.inRangePercent, 100)
+  // 🛡 Protección básica
+  const tirPercent = Math.max(0, Math.min(100, tir?.inRangePercent ?? 0))
+  const CV = Math.max(0, variability?.coefficientOfVariation ?? 0)
+  const A1c = Math.max(0, hba1c?.estimatedHbA1c ?? 0)
+
+  // 1️⃣ TIR Score (0–100 directo)
+  const tirScore = tirPercent
 
   // 2️⃣ Variability Score
   let variabilityScore: number
 
-  const CV = variability.coefficientOfVariation
-
-  if (CV <= 36) variabilityScore = 100
-  else if (CV >= 60) variabilityScore = 0
-  else {
+  if (CV <= 36) {
+    variabilityScore = 100
+  } else if (CV >= 60) {
+    variabilityScore = 0
+  } else {
     variabilityScore =
       100 - ((CV - 36) / (60 - 36)) * 100
   }
 
+  variabilityScore = Math.max(0, Math.min(100, variabilityScore))
+
   // 3️⃣ HbA1c Score
   let hba1cScore: number
 
-  const A1c = hba1c.estimatedHbA1c
-
-  if (A1c <= 6.5) hba1cScore = 100
-  else if (A1c >= 9) hba1cScore = 0
-  else {
+  if (A1c <= 6.5) {
+    hba1cScore = 100
+  } else if (A1c >= 9) {
+    hba1cScore = 0
+  } else {
     hba1cScore =
       100 - ((A1c - 6.5) / (9 - 6.5)) * 100
   }
 
-  // 🎯 Final Score
+  hba1cScore = Math.max(0, Math.min(100, hba1cScore))
+
+  // 🎯 Weighted Final Score
   const finalScore = Math.round(
     tirScore * 0.5 +
     variabilityScore * 0.3 +

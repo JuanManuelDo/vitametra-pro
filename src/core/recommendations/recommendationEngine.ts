@@ -1,7 +1,7 @@
-import type { TIRResult } from '../engine/tirCalculator.ts'
-import type { VariabilityResult } from '../engine/variabilityCalculator.ts'
-import type { HbA1cResult } from '../clinical/hba1cEstimator.ts'
-import type { MetabolicScoreResult } from '../scoring/metabolicScore.ts'
+import type { TIRResult } from '../engine/tirCalculator'
+import type { VariabilityResult } from '../engine/variabilityCalculator'
+import type { HbA1cResult } from '../clinical/hba1cEstimator'
+import type { MetabolicScoreResult } from '../scoring/metabolicScore'
 
 export interface Recommendation {
   priority: 'high' | 'medium' | 'low'
@@ -22,8 +22,13 @@ export function generateRecommendations(
 
   const recommendations: Recommendation[] = []
 
+  const tirPercent = tir?.inRangePercent ?? 0
+  const CV = variability?.coefficientOfVariation ?? 0
+  const A1c = hba1c?.estimatedHbA1c ?? 0
+  const finalScore = score?.score ?? 0
+
   // 🔴 1️⃣ TIR bajo
-  if (tir.inRangePercent < 50) {
+  if (tirPercent < 50) {
     recommendations.push({
       priority: 'high',
       message:
@@ -32,7 +37,7 @@ export function generateRecommendations(
   }
 
   // 🔴 2️⃣ Alta variabilidad
-  if (variability.coefficientOfVariation >= 36) {
+  if (CV >= 36) {
     recommendations.push({
       priority: 'high',
       message:
@@ -41,7 +46,7 @@ export function generateRecommendations(
   }
 
   // 🟠 3️⃣ HbA1c elevada
-  if (hba1c.estimatedHbA1c >= 6.5) {
+  if (A1c >= 6.5) {
     recommendations.push({
       priority: 'medium',
       message:
@@ -50,13 +55,13 @@ export function generateRecommendations(
   }
 
   // 🟢 4️⃣ Score general
-  if (score.score >= 80) {
+  if (finalScore >= 80) {
     recommendations.push({
       priority: 'low',
       message:
         'Excellent metabolic control. Continue your current management strategy.'
     })
-  } else if (score.score < 50) {
+  } else if (finalScore < 50) {
     recommendations.push({
       priority: 'high',
       message:
@@ -65,7 +70,8 @@ export function generateRecommendations(
   }
 
   return {
-    summary: `Metabolic Score: ${score.score}/100 (${score.category})`,
+    summary: `Metabolic Score: ${finalScore}/100 (${score.category})`,
     recommendations
   }
 }
+

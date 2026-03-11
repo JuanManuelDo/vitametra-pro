@@ -9,7 +9,7 @@ import Snackbar from './components/ui/Snackbar';
 import ResultDisplay from './components/ui/ResultDisplay';
 import LoginModal from './components/modals/LoginModal';
 import WelcomeModal from './components/modals/WelcomeModal';
-import ClosureModal from './components/modals/ClosureModal'; // IMPORTADO
+import ClosureModal from './components/modals/ClosureModal';
 
 // 2. TABS Y PÁGINAS (RUTAS PROFESIONALES)
 import HomeTab from './tabs/HomeTab';
@@ -27,6 +27,7 @@ import PaymentSuccess from './components/payments/PaymentSuccess';
 import { analyzeFoodText } from './services/ai/geminiService';
 import { apiService } from './services/infrastructure/apiService';
 import { auth } from './services/infrastructure/firebaseService';
+import { setupNotifications } from './services/infrastructure/messagingService'; // NUEVO SERVICIO
 import type { UserData, HistoryEntry, Hba1cEntry } from './types';
 
 const App: React.FC = () => {
@@ -61,6 +62,7 @@ const App: React.FC = () => {
     }
   }, [location.pathname, navigate]);
 
+  // --- EFECTO: AUTENTICACIÓN ---
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (user) => {
       try {
@@ -82,6 +84,7 @@ const App: React.FC = () => {
     return () => unsub();
   }, [initializeSession]);
 
+  // --- EFECTO: SUSCRIPCIÓN A DATOS ---
   useEffect(() => {
     if (isLoggedIn && currentUser?.id) {
       const unsubH = apiService.subscribeToHistory(currentUser.id, (h) => 
@@ -89,6 +92,15 @@ const App: React.FC = () => {
       const unsubHb = apiService.subscribeToHba1cHistory(currentUser.id, (hb) => 
         setDataStreams(prev => ({ ...prev, hba1c: hb })));
       return () => { unsubH(); unsubHb(); };
+    }
+  }, [isLoggedIn, currentUser?.id]);
+
+  // --- EFECTO: BIO-NOTIFICACIONES (FCM TOKEN) ---
+  useEffect(() => {
+    if (isLoggedIn && currentUser?.id) {
+      // Intentamos configurar las notificaciones al iniciar sesión
+      // Esto pedirá permiso al usuario y guardará su token en Firestore
+      setupNotifications(currentUser.id);
     }
   }, [isLoggedIn, currentUser?.id]);
 
@@ -152,7 +164,6 @@ const App: React.FC = () => {
             }} />
           } />
 
-          {/* HomeTab en Dashboard también recibe el disparador para abrir el modal */}
           <Route path="/dashboard" element={
             isLoggedIn ? 
             <HomeTab 

@@ -18,7 +18,7 @@ import {
 import { getStorage } from "firebase/storage";
 import { getFunctions } from "firebase/functions";
 
-// CONFIGURACIÓN PROTEGIDA (Lee desde Vercel o variables de entorno)
+// CONFIGURACIÓN PROTEGIDA
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY, 
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
@@ -28,8 +28,8 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
-// Inicialización de la App
-const app = initializeApp(firebaseConfig);
+// Inicialización de la App (Añadido export para que messagingService lo vea)
+export const app = initializeApp(firebaseConfig);
 
 // Exportación de servicios nucleares
 export const db = getFirestore(app);
@@ -37,13 +37,12 @@ export const storage = getStorage(app);
 export const functions = getFunctions(app, 'us-central1');
 export const auth = getAuth(app);
 
-// Configuración de persistencia (Local Storage) para mantener la sesión activa
+// Configuración de persistencia (Local Storage)
 setPersistence(auth, browserLocalPersistence)
   .catch((err) => console.error("Error en persistencia Auth:", err));
 
 /**
  * SERVICIO DE EVENTOS CLÍNICOS
- * Centraliza el guardado de datos métricos para el análisis de la IA.
  */
 export const logClinicalEvent = async (
     userId: string, 
