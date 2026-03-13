@@ -3,6 +3,7 @@ import { CloudArrowUpIcon, CheckCircleIcon, XMarkIcon, DocumentTextIcon, Sparkle
 import Spinner from './Spinner';
 import { parseGlucometerData } from '../../services/geminiService';
 import type { HistoryEntry, ImportedGlucoseEntry, MealType, UserData } from '../../types';
+import { showAlert } from '../../utils/alerts';
 
 interface SmartImportModalProps {
   onClose: () => void;
@@ -83,7 +84,7 @@ const SmartImportModal: React.FC<SmartImportModalProps> = ({ onClose, onSave, ex
           setRawResults(results);
           setStep('CONFIG');
       } catch (err) {
-          alert("No pudimos procesar la estructura del archivo. Intenta con un CSV estándar.");
+          showAlert("Formato Inválido", "No pudimos procesar la estructura del archivo. Intenta con un CSV estándar.", "error");
       } finally {
           setIsProcessing(false);
       }

@@ -3,6 +3,7 @@ import { Sparkles, Zap, CheckCircle2, ShieldCheck } from 'lucide-react';
 // RUTA CORREGIDA
 import { apiService } from '../services/infrastructure/apiService';
 import type { UserData } from '../types';
+import { showAlert, showToast } from '../utils/alerts';
 
 interface PricingTabProps {
     currentUser: UserData;
@@ -20,10 +21,10 @@ const PricingTab: React.FC<PricingTabProps> = ({ currentUser }) => {
                 if (res.url && res.url !== '#') {
                     window.location.href = res.url;
                 } else {
-                    alert('Redirigiendo a pasarela de pago segura...');
+                    showToast('Redirigiendo a pasarela de pago segura...', 'info');
                 }
             } catch (error) {
-                alert('Error al conectar con el servicio de pagos.');
+                showAlert('Error', 'Error al conectar con el servicio de pagos.', 'error');
             } finally {
                 setIsSubmitting(false);
             }

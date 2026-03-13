@@ -16,7 +16,7 @@ interface NavigationProps {
 const Navigation: React.FC<NavigationProps> = ({ activeTab, onTabChange }) => {
   
   const tabs = [
-    { id: 'dashboard', label: 'Hoy', icon: <LayoutGrid size={22} />, path: 'dashboard' },
+    { id: 'dashboard', label: 'Dashboard', icon: <LayoutGrid size={22} />, path: 'dashboard' },
     { 
       id: 'analyzer', 
       label: 'Analizar', 
@@ -24,10 +24,10 @@ const Navigation: React.FC<NavigationProps> = ({ activeTab, onTabChange }) => {
       path: 'analyzer',
       badge: true 
     },
-    { id: 'history', label: 'Tendencias', icon: <History size={22} />, path: 'history' },
+    { id: 'history', label: 'Historial', icon: <History size={22} />, path: 'history' },
     { 
       id: 'settings', 
-      label: 'Reportes',      
+      label: 'Tendencias',      
       icon: <Stethoscope size={22} />, 
       path: 'settings' 
     },

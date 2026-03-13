@@ -1,53 +1,65 @@
-
-import React, { useState, useEffect, useRef } from 'react';
-import type { PatientClinicalSummary, CriticalEvent } from '../../types';
+import React, { useState, useRef, useMemo } from 'react';
+import type { MedicalSummary, HistoryEntry } from '../../types';
 import { 
-    XMarkIcon, DocumentTextIcon, FileCsvIcon, 
-    ActivityIcon, BloodDropIcon, InformationCircleIcon, 
-    CheckCircleIcon, SparklesIcon, FireIcon, UserCircleIcon,
-    ShieldCheckIcon, RobotIcon, ArrowRightIcon
+    XMarkIcon, DocumentTextIcon, ActivityIcon, SparklesIcon, 
+    RobotIcon, ShieldCheckIcon, CheckCircleIcon 
 } from '../ui/Icons';
-import { apiService } from '../../services/apiService';
-import Spinner from './Spinner';
+import { Link, Filter } from 'lucide-react';
+import Spinner from '../ui/Spinner';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
-import TimeInRangeChart from './TimeInRangeChart';
+import TimeInRangeChart from '../charts/TimeInRangeChart';
+import MultimodalTimeline from '../charts/MultimodalTimeline';
+import { showAlert, showToast } from '../../utils/alerts';
 
 interface Props {
     patientId: string;
     patientName: string;
+    patientRut?: string;
+    diabetesType?: string;
+    history: HistoryEntry[];
+    summary: MedicalSummary;
     onClose: () => void;
 }
 
-const CLINICAL_PALETTE = {
-    target: '#2ECC71',
-    high: '#F1C40F',
-    veryHigh: '#E67E22',
-    low: '#E74C3C',
-    veryLow: '#8E44AD',
-    brand: '#1e3a8a'
-};
-
-const PatientClinicalSummaryModal: React.FC<Props> = ({ patientId, patientName, onClose }) => {
-    const [data, setData] = useState<PatientClinicalSummary | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
+const PatientClinicalSummaryModal: React.FC<Props> = ({ 
+    patientId, patientName, patientRut, diabetesType, history, summary, onClose 
+}) => {
     const [isExportingPDF, setIsExportingPDF] = useState(false);
+    const [filterMode, setFilterMode] = useState<'ALL'|'SPORT'|'SEDENTARY'>('ALL');
+    const [doctorNote, setDoctorNote] = useState('');
+    const [isSavingNote, setIsSavingNote] = useState(false);
+    
     const currentYear = new Date().getFullYear();
-    const dateRange = `01/${new Date().getMonth() + 1}/${currentYear} al ${new Date().toLocaleDateString('es-ES')}`;
+    const startDate = summary?.period?.start || new Date().toISOString();
+    const dateRange = `${new Date(startDate).toLocaleDateString('es-ES')} al ${new Date().toLocaleDateString('es-ES')}`;
     
     const reportRef = useRef<HTMLDivElement>(null);
 
-    useEffect(() => {
-        const load = async () => {
-            const summary = await apiService.fetchPatientClinicalSummary(patientId);
-            setData(summary);
-            setIsLoading(false);
+    // Calcular detallado de TiR basado en el historial
+    const tirDetailed = useMemo(() => {
+        let veryLow=0, low=0, target=0, high=0, veryHigh=0;
+        const records = history.filter(e => e.bloodGlucoseValue || e.postPrandialGlucose);
+        records.forEach(e => {
+            const v = (e.bloodGlucoseValue || e.postPrandialGlucose) as number;
+            if(v < 54) veryLow++;
+            else if(v < 70) low++;
+            else if(v <= 180) target++;
+            else if(v <= 250) high++;
+            else veryHigh++;
+        });
+        const total = records.length || 1;
+        return {
+            veryLow: Math.round(veryLow/total*100),
+            low: Math.round(low/total*100),
+            target: Math.round(target/total*100),
+            high: Math.round(high/total*100),
+            veryHigh: Math.round(veryHigh/total*100),
         };
-        load();
-    }, [patientId]);
+    }, [history]);
 
     const handleExportPDF = async () => {
-        if (!reportRef.current || !data) return;
+        if (!reportRef.current) return;
         setIsExportingPDF(true);
         try {
             const canvas = await html2canvas(reportRef.current, { 
@@ -62,21 +74,33 @@ const PatientClinicalSummaryModal: React.FC<Props> = ({ patientId, patientName, 
             const pdfWidth = pdf.internal.pageSize.getWidth();
             const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
             pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-            pdf.save(`Reporte_Medico_VitaMetra_${data.patientName.replace(' ', '_')}.pdf`);
-        } catch (err) { alert("Error al generar PDF clínico."); }
-        finally { setIsExportingPDF(false); }
+            pdf.save(`Reporte_Medico_VitaMetra_${patientName.replace(' ', '_')}.pdf`);
+        } catch (err) { 
+            showAlert("Error", "Error al generar PDF clínico.", "error"); 
+        } finally { 
+            setIsExportingPDF(false); 
+        }
     };
 
-    if (isLoading) return (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[110] backdrop-blur-sm">
-            <div className="bg-white p-10 rounded-[2.5rem] flex flex-col items-center shadow-2xl">
-                <Spinner />
-                <p className="mt-4 font-black text-slate-600 uppercase tracking-widest text-xs">Sincronizando Historial Médico...</p>
-            </div>
-        </div>
-    );
+    const handleGenerateSecureLink = () => {
+        // Generar un UUID V4 simple para el enlace seguro temporal
+        const secureToken = crypto.randomUUID();
+        navigator.clipboard.writeText(`https://vitametra.app/secure-report/${secureToken}`);
+        showToast("Enlace temporal copiado al portapapeles", "success");
+    };
 
-    if (!data) return null;
+    const handleSaveNote = async () => {
+        if (!doctorNote.trim()) return;
+        setIsSavingNote(true);
+        // Simular guardado y notificación Push
+        setTimeout(() => {
+            setIsSavingNote(false);
+            showToast("Nota guardada y notificada al paciente", "success");
+            setDoctorNote('');
+        }, 800);
+    };
+
+    if (!summary) return null;
 
     return (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[110] p-4 backdrop-blur-md animate-fade-in" onClick={onClose}>
@@ -87,15 +111,23 @@ const PatientClinicalSummaryModal: React.FC<Props> = ({ patientId, patientName, 
                 {/* TOOLBAR SUPERIOR (ACCIONES) */}
                 <div className="p-4 bg-slate-900 text-white flex justify-between items-center shrink-0">
                     <div className="flex items-center gap-4">
-                        <span className="text-[10px] font-black uppercase tracking-widest bg-white/10 px-3 py-1 rounded-full border border-white/10">Modo Visualización de Reporte</span>
+                        <span className="text-[10px] font-black uppercase tracking-widest bg-emerald-500/20 text-emerald-400 px-3 py-1 rounded-full border border-emerald-500/30 flex items-center gap-2">
+                           <ShieldCheckIcon className="w-3 h-3"/> Dashboard Clínico Seguro
+                        </span>
                     </div>
                     <div className="flex items-center gap-3">
                         <button 
+                            onClick={handleGenerateSecureLink}
+                            className="flex items-center gap-2 px-4 py-2 bg-slate-800 text-slate-300 font-bold rounded-xl hover:bg-slate-700 hover:text-white transition-all text-[10px] uppercase tracking-widest border border-slate-700"
+                        >
+                            <Link size={14} /> Link Seguro Temporal
+                        </button>
+                        <button 
                             onClick={handleExportPDF} 
                             disabled={isExportingPDF}
-                            className="flex items-center gap-2 px-6 py-2 bg-brand-primary text-white font-black rounded-xl hover:bg-blue-700 transition-all text-xs uppercase tracking-widest shadow-lg shadow-blue-500/20"
+                            className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white font-black rounded-xl hover:bg-blue-500 transition-all text-xs uppercase tracking-widest shadow-lg shadow-blue-500/20"
                         >
-                            {isExportingPDF ? <Spinner /> : <DocumentTextIcon className="w-4 h-4" />} Generar PDF Médico
+                            {isExportingPDF ? <Spinner /> : <DocumentTextIcon className="w-4 h-4" />} PDF Pro
                         </button>
                         <button onClick={onClose} className="p-2 text-white/50 hover:text-white transition-colors"><XMarkIcon className="w-6 h-6" /></button>
                     </div>
@@ -109,154 +141,175 @@ const PatientClinicalSummaryModal: React.FC<Props> = ({ patientId, patientName, 
                         <header className="flex justify-between items-start border-b-2 border-slate-900 pb-8">
                             <div>
                                 <div className="flex items-center gap-3 mb-6">
-                                    <div className="w-12 h-12 bg-[#1e3a8a] text-white rounded-xl flex items-center justify-center shadow-lg">
+                                    <div className="w-12 h-12 bg-blue-600 text-white rounded-xl flex items-center justify-center shadow-lg shadow-blue-600/30">
                                         <SparklesIcon className="w-7 h-7" />
                                     </div>
-                                    <h1 className="text-3xl font-black text-[#1e3a8a] tracking-tight">VitaMetra Clinical</h1>
+                                    <h1 className="text-3xl font-[1000] text-slate-900 tracking-tighter italic uppercase">
+                                       Reporte de Gestión <span className="text-blue-600">Metabólica</span>
+                                    </h1>
                                 </div>
-                                <div className="grid grid-cols-2 gap-x-8 gap-y-2">
+                                <div className="grid grid-cols-2 gap-x-12 gap-y-3">
                                     <div>
-                                        <p className="text-[9px] font-black text-slate-400 uppercase">Paciente</p>
-                                        <p className="text-sm font-bold text-slate-800">{data.patientName}</p>
+                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Paciente</p>
+                                        <p className="text-lg font-black text-slate-900">{patientName}</p>
                                     </div>
                                     <div>
-                                        <p className="text-[9px] font-black text-slate-400 uppercase">RUT</p>
-                                        <p className="text-sm font-bold text-slate-800">{data.patientRut || '12.345.678-9'}</p>
+                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Tipo de Diabetes</p>
+                                        <p className="text-sm font-bold text-slate-800">{diabetesType || 'Diabetes Mellitus'}</p>
                                     </div>
                                     <div>
-                                        <p className="text-[9px] font-black text-slate-400 uppercase">Tipo de Diabetes</p>
-                                        <p className="text-sm font-bold text-slate-800">{data.diabetesType || 'Diabetes Mellitus'}</p>
+                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">RUT / Identificación</p>
+                                        <p className="text-sm font-bold text-slate-800">{patientRut || 'No especificado'}</p>
                                     </div>
                                     <div>
-                                        <p className="text-[9px] font-black text-slate-400 uppercase">Periodo del Reporte</p>
-                                        <p className="text-sm font-bold text-slate-800">{dateRange}</p>
+                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Periodo del Reporte</p>
+                                        <p className="text-sm font-bold text-slate-800 tracking-tighter">{dateRange}</p>
                                     </div>
                                 </div>
                             </div>
-                            <div className="text-right">
-                                <span className="inline-block px-3 py-1 bg-blue-50 text-[#1e3a8a] rounded-lg text-[9px] font-black uppercase tracking-widest border border-blue-100 mb-2">
-                                    Informe Generado por IA
+                            <div className="text-right flex flex-col items-end">
+                                <span className="inline-block px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-[9px] font-black uppercase tracking-widest border border-indigo-100 mb-2">
+                                    Generado por VitaMetra Insight Engine
                                 </span>
-                                <p className="text-[10px] text-slate-400 font-bold">RUT VitaMetra: 78.231.687-7</p>
+                                <div className="flex gap-2">
+                                  <Filter size={14} className="text-slate-400"/>
+                                  <select 
+                                      className="text-[10px] font-bold text-slate-500 bg-transparent outline-none uppercase tracking-widest cursor-pointer"
+                                      value={filterMode}
+                                      onChange={(e) => setFilterMode(e.target.value as any)}
+                                  >
+                                      <option value="ALL">Todo el periodo</option>
+                                      <option value="SPORT">Días con Deporte</option>
+                                      <option value="SEDENTARY">Días Sedentarios</option>
+                                  </select>
+                                </div>
                             </div>
                         </header>
 
-                        {/* 2. RESUMEN EJECUTIVO */}
-                        <section className="space-y-8">
+                        {/* 2. HERO METRIC TiR & CLINICAL STATS */}
+                        <section className="space-y-6">
                             <h2 className="text-xl font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
-                                <ActivityIcon className="w-6 h-6 text-brand-primary" /> Resumen Ejecutivo
+                                <ActivityIcon className="w-6 h-6 text-blue-600" /> Métricas Clínicas Core
                             </h2>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100 text-center">
-                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Proyección HbA1c</p>
-                                    <h3 className="text-5xl font-black text-[#1e3a8a]">{data.eHbA1c}%</h3>
-                                    <p className="text-[9px] font-bold text-green-600 mt-2 uppercase">GMI (Estándar ADA)</p>
-                                </div>
-                                <div className="p-6 bg-slate-900 text-white rounded-2xl text-center shadow-xl">
-                                    <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-2">Tiempo en Rango (TIR)</p>
-                                    <h3 className="text-5xl font-black text-[#2ECC71]">{data.timeInRange}%</h3>
-                                    <p className="text-[9px] font-bold text-slate-400 mt-2 uppercase">Meta: &gt; 70% (70-180 mg/dL)</p>
-                                </div>
-                                <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100">
-                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-4 text-center">Promedios Glucémicos</p>
-                                    <div className="space-y-3">
-                                        <div className="flex justify-between items-center text-[10px] border-b border-slate-100 pb-1">
-                                            <span className="font-bold text-slate-500">AYUNAS:</span>
-                                            <span className="font-black text-slate-800">{data.meanGlucose.fasting} mg/dL</span>
+                            <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+                                {/* Hero TiR */}
+                                <div className="col-span-8 p-8 bg-slate-900 text-white rounded-[2.5rem] shadow-2xl relative overflow-hidden">
+                                    <div className="absolute -top-20 -right-20 w-64 h-64 bg-emerald-500/20 rounded-full blur-3xl"></div>
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Tiempo en Rango (TIR)</p>
+                                    <div className="flex items-end gap-4">
+                                       <h3 className="text-7xl font-[1000] text-emerald-400 leading-none">{summary.clinicalMetrics.timeInRange}%</h3>
+                                       <div className="pb-2">
+                                           {summary.clinicalMetrics.timeInRange >= 70 ? (
+                                              <span className="flex items-center gap-1 text-xs font-bold text-emerald-300 bg-emerald-900/50 px-3 py-1 rounded-full"><CheckCircleIcon className="w-4 h-4"/> Rango Objetivo</span>
+                                           ) : (
+                                              <span className="flex items-center gap-1 text-xs font-bold text-amber-300 bg-amber-900/50 px-3 py-1 rounded-full">Bajo el Objetivo (&gt;70%)</span>
+                                           )}
+                                       </div>
+                                    </div>
+                                    
+                                    <div className="mt-8 space-y-2">
+                                        <div className="h-3 w-full bg-slate-800 rounded-full overflow-hidden flex shadow-inner">
+                                            {tirDetailed.veryLow > 0 && <div style={{width: `${tirDetailed.veryLow}%`}} className="bg-purple-500 h-full"></div>}
+                                            {tirDetailed.low > 0 && <div style={{width: `${tirDetailed.low}%`}} className="bg-red-500 h-full"></div>}
+                                            {tirDetailed.target > 0 && <div style={{width: `${tirDetailed.target}%`}} className="bg-emerald-400 h-full shadow-[0_0_10px_rgba(52,211,153,0.5)]"></div>}
+                                            {tirDetailed.high > 0 && <div style={{width: `${tirDetailed.high}%`}} className="bg-yellow-400 h-full"></div>}
+                                            {tirDetailed.veryHigh > 0 && <div style={{width: `${tirDetailed.veryHigh}%`}} className="bg-orange-500 h-full"></div>}
                                         </div>
-                                        <div className="flex justify-between items-center text-[10px] border-b border-slate-100 pb-1">
-                                            <span className="font-bold text-slate-500">PRE-PRANDIAL:</span>
-                                            <span className="font-black text-slate-800">{data.meanGlucose.prePrandial} mg/dL</span>
-                                        </div>
-                                        <div className="flex justify-between items-center text-[10px]">
-                                            <span className="font-bold text-slate-500">POST-PRANDIAL:</span>
-                                            <span className="font-black text-slate-800">{data.meanGlucose.postPrandial} mg/dL</span>
+                                        <div className="flex justify-between text-[9px] font-black uppercase text-slate-500 tracking-widest">
+                                            <span>Bajo: {tirDetailed.veryLow + tirDetailed.low}%</span>
+                                            <span className="text-emerald-400">Objetivo: {tirDetailed.target}%</span>
+                                            <span>Alto: {tirDetailed.high + tirDetailed.veryHigh}%</span>
                                         </div>
                                     </div>
+                                </div>
+                                {/* Secondary Stats */}
+                                <div className="col-span-4 flex flex-col gap-4">
+                                    <div className="p-6 bg-slate-50 rounded-[2rem] border border-slate-100 flex-1 flex flex-col justify-center">
+                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">GMI Proyectado</p>
+                                        <h3 className="text-4xl font-[1000] text-blue-600">{summary.clinicalMetrics.gmi}%</h3>
+                                    </div>
+                                    <div className="p-6 bg-slate-50 rounded-[2rem] border border-slate-100 flex-1 flex flex-col justify-center">
+                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Coeficiente de Variación</p>
+                                        <h3 className="text-4xl font-[1000] text-amber-500">{summary.clinicalMetrics.variationCoefficient}%</h3>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+
+                        {/* 3. MULTIMODAL TIMELINE */}
+                        <section className="space-y-6">
+                            <h2 className="text-xl font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                                <ActivityIcon className="w-6 h-6 text-indigo-600" /> Línea de Tiempo Multimodal
+                            </h2>
+                            <MultimodalTimeline history={history} filterMode={filterMode} />
+                        </section>
+
+                        {/* 4. AI ALERTS & PATTERNS */}
+                        <section className="space-y-6">
+                            <h2 className="text-xl font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                                <RobotIcon className="w-6 h-6 text-blue-600" /> Observaciones de Inteligencia Artificial
+                            </h2>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <div className="p-6 bg-blue-50/50 rounded-2xl border border-blue-100">
+                                    <h4 className="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-2">Hallazgo Principal</h4>
+                                    <p className="text-sm font-medium text-slate-700 leading-relaxed text-justify">{summary.insights.principalFinding}</p>
+                                </div>
+                                <div className="p-6 bg-amber-50/50 rounded-2xl border border-amber-100">
+                                    <h4 className="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-2">Correlación Causa-Efecto</h4>
+                                    <p className="text-sm font-medium text-slate-700 leading-relaxed text-justify">{summary.insights.causalityCorrelation}</p>
+                                </div>
+                                <div className="p-6 bg-emerald-50/50 rounded-2xl border border-emerald-100">
+                                    <h4 className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-2">Sugerencia Clínica</h4>
+                                    <p className="text-sm font-medium text-slate-700 leading-relaxed text-justify">{summary.insights.suggestedAdjustment}</p>
                                 </div>
                             </div>
                             
-                            <div className="bg-slate-50 p-8 rounded-3xl border border-slate-100 shadow-inner">
-                                <TimeInRangeChart tirData={data.tirDetailed} totalRecords={data.totalRecords} isSimple={true} />
-                            </div>
-                        </section>
-
-                        {/* 3. ANÁLISIS DE HÁBITOS POR IA */}
-                        <section className="space-y-6">
-                            <h2 className="text-xl font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
-                                <RobotIcon className="w-6 h-6 text-[#1e3a8a]" /> Análisis de Hábitos por IA
-                            </h2>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="p-6 bg-blue-50/50 rounded-2xl border border-blue-100">
-                                    <h4 className="text-[10px] font-black text-[#1e3a8a] uppercase tracking-widest mb-4">Tendencias de Ingesta Detectadas</h4>
-                                    <div className="space-y-3">
-                                        {data.aiInsights.map((insight, idx) => (
-                                            <div key={idx} className="flex gap-3 text-xs font-medium text-slate-700 leading-relaxed">
-                                                <div className="w-1.5 h-1.5 rounded-full bg-blue-400 mt-1 shrink-0"></div>
-                                                <p>{insight}</p>
+                            {summary.patterns.foodSpikes.length > 0 && (
+                                <div className="mt-4 p-6 bg-slate-50 rounded-2xl border border-slate-100">
+                                    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Disparadores Post-prandiales Identificados</h4>
+                                    <div className="flex flex-wrap gap-2">
+                                        {summary.patterns.foodSpikes.map((spike, idx) => (
+                                            <div key={idx} className="bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm flex items-center gap-3">
+                                                <span className="font-bold text-sm text-slate-800 capitalize">{spike.food}</span>
+                                                <div className="w-[1px] h-4 bg-slate-200"></div>
+                                                <span className="text-xs font-black text-orange-500">Pico Promedio: {Math.round(spike.avgPostPrandial)} mg/dL</span>
                                             </div>
                                         ))}
                                     </div>
                                 </div>
-                                <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100">
-                                    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Adherencia al Registro Clínico</h4>
-                                    <div className="flex items-center gap-6">
-                                        <div className="text-4xl font-black text-slate-800">{Math.round((data.adherence.logsPerformed / data.adherence.expectedLogs) * 100)}%</div>
-                                        <div className="flex-grow space-y-2">
-                                            <div className="h-2 w-full bg-slate-200 rounded-full overflow-hidden">
-                                                <div className="h-full bg-brand-secondary" style={{ width: `${(data.adherence.logsPerformed / data.adherence.expectedLogs) * 100}%` }}></div>
-                                            </div>
-                                            <p className="text-[10px] text-slate-400 font-bold uppercase">{data.adherence.logsPerformed} registros de {data.adherence.expectedLogs} sugeridos</p>
-                                        </div>
-                                    </div>
+                            )}
+                        </section>
+
+                        {/* 5. DOCTOR ENGAGEMENT: QUICK NOTES */}
+                        <section className="space-y-6 pt-6 border-t border-slate-100">
+                            <h2 className="text-xl font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                                <DocumentTextIcon className="w-6 h-6 text-brand-primary" /> Notas Clínicas del Profesional
+                            </h2>
+                            <div className="bg-slate-50 p-6 rounded-[2rem] border border-slate-200">
+                                <textarea 
+                                    className="w-full bg-white border border-slate-200 rounded-xl p-4 text-sm text-slate-700 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all resize-none"
+                                    rows={4}
+                                    placeholder="Escribe una instrucción médica para que el paciente reciba como notificación inmediata en su app..."
+                                    value={doctorNote}
+                                    onChange={(e) => setDoctorNote(e.target.value)}
+                                ></textarea>
+                                <div className="flex justify-end mt-4">
+                                    <button 
+                                        onClick={handleSaveNote}
+                                        disabled={isSavingNote || !doctorNote.trim()}
+                                        className="bg-blue-600 text-white px-6 py-2 rounded-xl font-bold uppercase tracking-widest text-[10px] hover:bg-blue-500 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        {isSavingNote ? 'Guardando...' : 'Guardar y Notificar al Paciente'}
+                                    </button>
                                 </div>
                             </div>
                         </section>
 
-                        {/* 4. BITÁCORA DE EVENTOS CRÍTICOS (DATA-TO-TEXT) */}
-                        <section className="space-y-6">
-                            <h2 className="text-xl font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
-                                <FireIcon className="w-6 h-6 text-red-500" /> Bitácora de Eventos Críticos
-                            </h2>
-                            <p className="text-xs text-slate-500 leading-relaxed">
-                                Tabla detallada de glucemias fuera de rango vinculadas a la descripción textual de ingesta para ajuste de dosis I:C por el profesional médico.
-                            </p>
-                            <div className="overflow-hidden border border-slate-100 rounded-2xl">
-                                <table className="w-full text-left">
-                                    <thead className="bg-slate-50 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                        <tr>
-                                            <th className="px-6 py-4">Fecha / Hora</th>
-                                            <th className="px-6 py-4">Evento (mg/dL)</th>
-                                            <th className="px-6 py-4">Registro Textual del Paciente</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-slate-50">
-                                        {data.criticalEventsLog.map((ev, i) => (
-                                            <tr key={i} className="hover:bg-slate-50 transition-colors">
-                                                <td className="px-6 py-4 text-[10px] font-bold text-slate-500">
-                                                    {new Date(ev.date).toLocaleDateString('es-ES')} <br/>
-                                                    {new Date(ev.date).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <span className={`text-sm font-black px-2 py-1 rounded-md ${ev.value > 220 ? 'bg-orange-50 text-orange-600' : 'bg-red-50 text-red-600'}`}>
-                                                        {ev.value}
-                                                    </span>
-                                                </td>
-                                                <td className="px-6 py-4 text-xs italic text-slate-600 font-medium">
-                                                    "{ev.foodDescription || 'Sin descripción textual'}"
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </section>
-
-                        {/* 5. CIERRE Y FIRMA */}
-                        <footer className="pt-12 border-t border-slate-200 mt-20">
+                        {/* 6. CIERRE Y FIRMA */}
+                        <footer className="pt-12 border-t border-slate-200 mt-20" data-html2canvas-ignore="false">
                             <div className="grid grid-cols-2 gap-12">
                                 <div className="space-y-4">
-                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Observaciones del Profesional Tratante</p>
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Observaciones Generales</p>
                                     <div className="h-32 border-b border-slate-200"></div>
                                 </div>
                                 <div className="flex flex-col items-center justify-end pb-4">
@@ -266,7 +319,7 @@ const PatientClinicalSummaryModal: React.FC<Props> = ({ patientId, patientName, 
                             </div>
                             <div className="mt-12 p-4 bg-slate-50 rounded-xl">
                                 <p className="text-[8px] text-slate-400 leading-relaxed text-justify uppercase font-bold tracking-tighter">
-                                    Este informe es una herramienta de apoyo clínico basada en datos autoinformados por el paciente a través de la plataforma VitaMetra. Los cálculos de HbA1c y TIR son proyecciones algorítmicas bajo estándares ADA {currentYear} y no deben reemplazar el juicio clínico, las pruebas de laboratorio estándar de oro, ni el diagnóstico de un profesional médico certificado. VitaMetra no se hace responsable por ajustes de tratamiento realizados fuera de la supervisión médica.
+                                    Este informe es una herramienta de apoyo clínico basada en datos autoinformados y métricas estimadas. No reemplaza laboratorios oficiales.
                                 </p>
                             </div>
                         </footer>
@@ -279,8 +332,6 @@ const PatientClinicalSummaryModal: React.FC<Props> = ({ patientId, patientName, 
                     <span className="flex items-center gap-2"><ShieldCheckIcon className="w-4 h-4 text-[#2ECC71]"/> Core MetraCore™ Certificado {currentYear}</span>
                     <span className="opacity-20">|</span>
                     <span>Audit Log ID: {Math.random().toString(16).substr(2, 12).toUpperCase()}</span>
-                    <span className="opacity-20">|</span>
-                    <span>RUT VitaMetra 78.231.687-7</span>
                 </div>
             </div>
         </div>

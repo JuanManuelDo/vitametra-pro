@@ -87,9 +87,9 @@ const FoodLogger: React.FC<FoodLoggerProps> = ({ onSave }) => {
                 </div>
                 <div className="flex-1">
                   <span className="block text-xl font-black text-metra-dark tracking-tight">Cámara IA</span>
-                  <span className="text-xs text-slate-400 font-bold uppercase tracking-tighter">Predicción Estructural</span>
+                  <span className="text-xs text-slate-400 font-bold uppercase tracking-tighter">Escanear mi plato</span>
                 </div>
-                <input type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+                <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handleFileChange} />
               </label>
 
               <button className="apple-card p-6 flex items-center gap-4 active:scale-95 transition-all text-left group bg-white">

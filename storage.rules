@@ -1,0 +1,26 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+  
+    // Implicit Default Deny (Evitar accesos públicos sin autenticar)
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+
+    // Carpeta de imágenes de alimentos - Aislamiento estricto
+    // Nota: El cliente sube el archivo con un Signed URL Token corto si se necesita para descargar.
+    match /food_images/{userId}/{imageId} {
+      allow read, delete: if request.auth != null && request.auth.uid == userId;
+      
+      allow write: if request.auth != null 
+                   && request.auth.uid == userId
+                   && request.resource.size < 6 * 1024 * 1024 // 6 MB max allowed
+                   && request.resource.contentType.matches('image/.*');
+    }
+    
+    // Perfiles y avatares de usuario - Aislamiento estricto médico (Solo yo)
+    match /users/{userId}/{allPaths=**} {
+      allow read, write, delete: if request.auth != null && request.auth.uid == userId;
+    }
+  }
+}

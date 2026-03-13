@@ -1,227 +1,407 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { 
+    XMarkIcon, CheckCircleIcon, SmartphoneIcon, 
+    DocumentTextIcon, ActivityIcon, ShieldCheckIcon 
+} from '../ui/Icons';
+import { UploadCloud, ChevronRight, FileJson, AlertCircle } from 'lucide-react';
+import { apiService } from '../../services/infrastructure/apiService';
+import type { HistoryEntry } from '../../types';
+import { showToast } from '../../utils/alerts';
 
-import React, { useState, useEffect } from 'react';
-import { BluetoothIcon, XMarkIcon, CheckCircleIcon, SmartphoneIcon, LockClosedIcon } from '../ui/Icons';
-import { apiService } from '../../services/apiService';
-import type { ImportedGlucoseEntry } from '../../types';
+import { auth } from '../../services/infrastructure/firebaseService';
 
 interface DeviceSyncModalProps {
     onClose: () => void;
-    onSyncComplete: (entries: ImportedGlucoseEntry[]) => void;
+    onSyncComplete: (entries: HistoryEntry[]) => void;
 }
 
-type Step = 'INSTRUCTIONS' | 'SCANNING' | 'PIN_INPUT' | 'SYNCING' | 'SUCCESS';
+type Step = 'DEVICE_SELECTION' | 'EXPORT_GUIDE' | 'DROP_ZONE' | 'ANALYSING' | 'VALIDATING' | 'SUCCESS';
+
+interface DeviceOption {
+    id: string;
+    name: string;
+    type: 'CGM' | 'Bomba' | 'Glucómetro';
+    brandBrand: string;
+    guide: string[];
+    bgClass: string;
+}
+
+const DEVICES: DeviceOption[] = [
+    { 
+        id: 'libre', name: 'FreeStyle Libre', type: 'CGM', brandBrand: 'Abbott', 
+        bgClass: 'bg-yellow-50 hover:bg-yellow-100 border-yellow-200',
+        guide: [
+            "1. Ingresa a LibreView.com desde tu computadora.",
+            "2. Ve a 'Historial de Glucosa' o 'Reportes'.",
+            "3. Haz clic en 'Descargar datos de glucosa' (botón arriba a la derecha).",
+            "4. Guarda el archivo CSV en tu computadora."
+        ]
+    },
+    { 
+        id: 'dexcom', name: 'Dexcom G6/G7', type: 'CGM', brandBrand: 'Dexcom', 
+        bgClass: 'bg-green-50 hover:bg-green-100 border-green-200',
+        guide: [
+            "1. Abre Dexcom Clarity en tu clínica o cuenta personal.",
+            "2. Selecciona el rango de fechas deseado (ej. últimos 14 días).",
+            "3. Haz clic en 'Exportar' en la esquina superior derecha.",
+            "4. Descarga el reporte en formato CSV."
+        ]
+    },
+    { 
+        id: 'medtronic', name: 'CareLink', type: 'Bomba', brandBrand: 'Medtronic', 
+        bgClass: 'bg-blue-50 hover:bg-blue-100 border-blue-200',
+        guide: [
+            "1. Inicia sesión en CareLink Personal.",
+            "2. Ve a la pestaña de 'Informes'.",
+            "3. Selecciona 'Exportación de Datos' u obtén el PDF de evaluación.",
+            "4. Selecciona el rango de tiempo y descarga tu archivo."
+        ]
+    },
+];
 
 const DeviceSyncModal: React.FC<DeviceSyncModalProps> = ({ onClose, onSyncComplete }) => {
-    const [step, setStep] = useState<Step>('INSTRUCTIONS');
+    const [step, setStep] = useState<Step>('DEVICE_SELECTION');
+    const [selectedDevice, setSelectedDevice] = useState<DeviceOption | null>(null);
     const [progress, setProgress] = useState(0);
-    const [pin, setPin] = useState('');
     const [totalRecords, setTotalRecords] = useState(0);
+    const [extractedData, setExtractedData] = useState<any>(null);
+    const [fileId, setFileId] = useState<string | null>(null);
+    const [statusText, setStatusText] = useState('Analizando estructura del archivo...');
+    
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
-    // Step 2: Simulate Scanning
+    // Simulated text animation during analysis
     useEffect(() => {
-        if (step === 'SCANNING') {
-            const timer = setTimeout(() => {
-                // Device found logic could go here, but UI handles the state transition manually for this mock
-            }, 2000);
-            return () => clearTimeout(timer);
+        if (step === 'ANALYSING') {
+            const texts = [
+                'Verificando encriptación...',
+                'Extrayendo series temporales...',
+                'Correlacionando con IA de Nutria...',
+                'Calculando Tiempo en Rango...'
+            ];
+            
+            let textIndex = 0;
+            const textInterval = setInterval(() => {
+                textIndex = (textIndex + 1) % texts.length;
+                setStatusText(texts[textIndex]);
+            }, 800);
+
+            return () => {
+                clearInterval(textInterval);
+            };
         }
     }, [step]);
 
-    // Step 4: Simulate Sync Progress
+    // Firestore listener for AI completion
     useEffect(() => {
-        if (step === 'SYNCING') {
-            const interval = setInterval(() => {
-                setProgress(prev => {
-                    if (prev >= 100) {
-                        clearInterval(interval);
-                        return 100;
-                    }
-                    return prev + 2; // Increment progress
-                });
-            }, 30); // Fast simulation
-
-            // Trigger actual data fetch
-            apiService.simulateGlucometerSync().then((data) => {
-                setTotalRecords(data.length);
-                setTimeout(() => {
-                    setStep('SUCCESS');
-                    onSyncComplete(data);
-                }, 2000); // Wait for progress bar visual completion
+        if (step === 'ANALYSING' && fileId && auth.currentUser) {
+            const unsub = apiService.subscribeToPendingReport(auth.currentUser.uid, fileId, (data) => {
+                if (data.status === 'ANALYZED') {
+                    setExtractedData(data);
+                    setStep('VALIDATING');
+                } else if (data.status === 'ERROR') {
+                    showToast(data.error || 'No se pudo leer el archivo', 'error');
+                    setStep('DROP_ZONE');
+                }
             });
-
-            return () => clearInterval(interval);
+            return () => unsub();
         }
-    }, [step]);
+    }, [step, fileId]);
 
-    const handlePinSubmit = () => {
-        if (pin.length >= 4) {
-            setStep('SYNCING');
+    const handleDeviceSelect = (device: DeviceOption) => {
+        setSelectedDevice(device);
+        setStep('EXPORT_GUIDE');
+    };
+
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement> | React.DragEvent) => {
+        e.preventDefault();
+        
+        let file: File | null = null;
+        if ('dataTransfer' in e && e.dataTransfer.files.length > 0) {
+            file = e.dataTransfer.files[0];
+        } else if ('target' in e) {
+            const target = e.target as HTMLInputElement;
+            if (target.files && target.files.length > 0) file = target.files[0];
+        }
+
+        if (!file || !auth.currentUser) return;
+        
+        setStep('ANALYSING');
+        setProgress(0);
+        
+        try {
+            const uploadedFileId = await apiService.uploadMedicalReport(auth.currentUser.uid, file, (pct) => {
+                setProgress(Math.round(pct)); // Track real upload progress
+            });
+            setFileId(uploadedFileId);
+        } catch (error) {
+            showToast('No se pudo cargar el archivo seguro.', 'error');
+            setStep('DROP_ZONE');
+        }
+    };
+
+    const handleConfirmValidation = async () => {
+        if (!auth.currentUser || !fileId || !extractedData) return;
+        setStep('ANALYSING'); // Use as a quick loading state
+        setStatusText("Guardando historial clínico...");
+        try {
+            await apiService.confirmAndSaveMedicalData(auth.currentUser.uid, fileId, extractedData);
+            setTotalRecords(extractedData.detectedGlucoseReadings || 0);
+            setStep('SUCCESS');
+            onSyncComplete(extractedData.glucose || []);
+        } catch (error) {
+            showToast('Error guardando los datos finales', 'error');
+            setStep('VALIDATING');
         }
     };
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-[60] p-4 animate-fade-in backdrop-blur-sm">
-            <div className="bg-brand-surface dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-sm relative overflow-hidden flex flex-col max-h-[90vh]">
+        <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center z-[110] p-4 animate-fade-in backdrop-blur-md">
+            <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-2xl relative flex flex-col max-h-[90vh] overflow-hidden">
                 
-                {/* Header */}
-                <div className="p-5 border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 flex justify-between items-center">
-                    <h3 className="font-bold text-lg text-slate-800 dark:text-white flex items-center gap-2">
-                        <BluetoothIcon className="w-5 h-5 text-brand-primary" />
-                        Sincronización
-                    </h3>
-                    <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors">
-                        <XMarkIcon className="w-6 h-6" />
+                {/* Header Profesional */}
+                <div className="p-6 border-b border-slate-100 flex justify-between items-start bg-slate-50/50">
+                    <div>
+                        <div className="flex items-center gap-2 mb-1">
+                            <ActivityIcon className="w-5 h-5 text-blue-600" />
+                            <h3 className="font-black text-xl text-slate-800 tracking-tight uppercase italic">VitaFlow <span className="text-blue-600">Onboarding</span></h3>
+                        </div>
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                            {step === 'DEVICE_SELECTION' && 'Paso 1: Selecciona tu Fuente de Datos'}
+                            {step === 'EXPORT_GUIDE' && `Paso 2: Descarga desde ${selectedDevice?.name}`}
+                            {step === 'DROP_ZONE' && 'Paso 3: Carga Segura de Archivos'}
+                            {step === 'ANALYSING' && 'Procesando con IA Clínica'}
+                            {step === 'VALIDATING' && 'Paso 4: Auditoría de Datos'}
+                            {step === 'SUCCESS' && 'Integración Exitosa'}
+                        </p>
+                    </div>
+                    <button onClick={onClose} className="p-2 bg-white rounded-full shadow-sm text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors">
+                        <XMarkIcon className="w-5 h-5" />
                     </button>
                 </div>
 
-                <div className="p-6">
-                    {/* STEP 1: INSTRUCTIONS */}
-                    {step === 'INSTRUCTIONS' && (
-                        <div className="space-y-6 animate-fade-in">
-                            <div className="flex justify-center">
-                                <img 
-                                    src="https://images.unsplash.com/photo-1576091160550-217358c7e618?auto=format&fit=crop&q=80&w=200&h=200" 
-                                    alt="Accu-Chek Guide" 
-                                    className="w-32 h-32 object-contain rounded-lg shadow-sm bg-white"
-                                />
+                <div className="p-8 overflow-y-auto custom-scrollbar">
+                    
+                    {/* STEP 1: CAROUSEL / GRID DE DISPOSITIVOS */}
+                    {step === 'DEVICE_SELECTION' && (
+                        <div className="animate-fade-in space-y-6">
+                            <div className="text-center mb-8">
+                                <h4 className="text-slate-800 font-[1000] text-2xl mb-2">Conecta tu Dispositivo Médico</h4>
+                                <p className="text-slate-500 font-medium text-sm">Selecciona el fabricante de tu Monitor Continuo (CGM) o Bomba de Insulina para ver las instrucciones.</p>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                {DEVICES.map(device => (
+                                    <button 
+                                        key={device.id}
+                                        onClick={() => handleDeviceSelect(device)}
+                                        className={`flex flex-col items-start p-5 rounded-2xl border transition-all text-left shadow-sm hover:-translate-y-1 ${device.bgClass}`}
+                                    >
+                                        <div className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center mb-4">
+                                            <SmartphoneIcon className="w-5 h-5 text-slate-600" />
+                                        </div>
+                                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">{device.brandBrand}</span>
+                                        <span className="font-bold text-slate-800 text-lg leading-tight">{device.name}</span>
+                                        <span className="mt-2 text-[10px] bg-white/50 px-2 py-1 rounded-md font-bold text-slate-600 border border-black/5">{device.type}</span>
+                                    </button>
+                                ))}
                             </div>
                             
-                            <ol className="list-decimal pl-5 text-sm text-slate-600 dark:text-slate-300 space-y-3">
-                                <li>Enciende tu medidor.</li>
-                                <li>En tu medidor, selecciona <strong>Ajustes</strong>, después <strong>Inalámbrico</strong>, y, a continuación, <strong>Sincronización</strong>.</li>
-                                <li>A continuación, selecciona <strong>“Sincronizar disp.”</strong> y sigue las instrucciones que aparecen en la pantalla.</li>
+                            <div className="mt-6 p-4 bg-slate-50 rounded-xl border border-slate-100 flex items-center gap-4">
+                                <FileJson className="w-6 h-6 text-slate-400" />
+                                <div>
+                                   <p className="text-sm font-bold text-slate-700">¿Tienes un archivo genérico?</p>
+                                   <p className="text-xs text-slate-500">Nuestra IA puede procesar CSVs y PDFs estándar de otros fabricantes.</p>
+                                </div>
+                                <button 
+                                    onClick={() => setStep('DROP_ZONE')}
+                                    className="ml-auto px-4 py-2 bg-slate-200 text-slate-700 font-bold text-[10px] uppercase tracking-widest rounded-lg hover:bg-slate-300 transition-colors"
+                                >
+                                    Ir directo a subir
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* STEP 2: EXPORT GUIDE */}
+                    {step === 'EXPORT_GUIDE' && selectedDevice && (
+                        <div className="animate-fade-in space-y-8">
+                            <div className="flex items-center gap-4 p-4 bg-slate-50 border border-slate-100 rounded-2xl">
+                                <div className="w-12 h-12 bg-white rounded-xl shadow-sm flex items-center justify-center">
+                                    <ActivityIcon className="w-6 h-6 text-blue-600" />
+                                </div>
+                                <div>
+                                    <h4 className="font-[1000] text-xl text-slate-800">Exportar desde {selectedDevice.name}</h4>
+                                    <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Instrucciones Oficiales</p>
+                                </div>
+                            </div>
+
+                            <ol className="space-y-4">
+                                {selectedDevice.guide.map((instruction, idx) => (
+                                    <li key={idx} className="flex gap-4 p-4 bg-white border border-slate-100 rounded-xl shadow-sm items-center">
+                                        <div className="w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center font-black text-xs shrink-0">
+                                            {idx + 1}
+                                        </div>
+                                        <p className="text-sm font-semibold text-slate-700">{instruction.substring(3)}</p>
+                                    </li>
+                                ))}
                             </ol>
 
-                            <button 
-                                onClick={() => setStep('SCANNING')}
-                                className="w-full py-3 bg-brand-primary text-white font-bold rounded-xl shadow-lg hover:bg-brand-dark transition-all"
-                            >
-                                Buscar Dispositivo
-                            </button>
+                            <div className="flex gap-4 pt-4 border-t border-slate-100">
+                                <button 
+                                    onClick={() => setStep('DEVICE_SELECTION')}
+                                    className="px-6 py-3 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 transition-colors uppercase tracking-widest text-[10px]"
+                                >
+                                    Volver
+                                </button>
+                                <button 
+                                    onClick={() => setStep('DROP_ZONE')}
+                                    className="flex-1 flex items-center justify-center gap-2 py-3 bg-blue-600 text-white font-black rounded-xl shadow-lg hover:bg-blue-700 transition-all uppercase tracking-widest text-[10px]"
+                                >
+                                    Ya tengo mi archivo <ChevronRight size={16} />
+                                </button>
+                            </div>
                         </div>
                     )}
 
-                    {/* STEP 2: SCANNING / DEVICE FOUND */}
-                    {step === 'SCANNING' && (
-                        <div className="animate-fade-in text-center space-y-6">
-                            <h4 className="text-slate-600 dark:text-slate-300 font-semibold mb-2">Selecciona tu Accu-Chek Guide</h4>
-                            
-                            {/* Device Card */}
+                    {/* STEP 3: MULTIMODAL DROP ZONE */}
+                    {step === 'DROP_ZONE' && (
+                        <div className="animate-fade-in space-y-6">
+                            <div className="text-center mb-6">
+                                <h4 className="text-2xl font-[1000] text-slate-800">Carga tu Reporte Médico</h4>
+                                <p className="text-sm font-medium text-slate-500">Admitimos archivos PDF, hojas de cálculo CSV o imágenes de pantallas.</p>
+                            </div>
+
                             <div 
-                                onClick={() => setStep('PIN_INPUT')}
-                                className="bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl p-4 shadow-sm hover:shadow-md cursor-pointer transition-all flex items-center justify-between group"
+                                className="border-2 border-dashed border-blue-200 bg-blue-50/50 hover:bg-blue-50 rounded-[2rem] p-12 text-center transition-all cursor-pointer group"
+                                onDragOver={(e) => e.preventDefault()}
+                                onDrop={handleFileUpload}
+                                onClick={() => fileInputRef.current?.click()}
                             >
-                                <div className="flex items-center gap-3">
-                                    <div className="p-2 bg-blue-50 dark:bg-blue-900/30 rounded-lg text-brand-primary">
-                                        <SmartphoneIcon className="w-6 h-6" />
-                                    </div>
-                                    <div className="text-left">
-                                        <p className="font-bold text-slate-800 dark:text-white">Accu-Chek Guide</p>
-                                        <p className="text-xs text-slate-500 font-mono">SN ***34721373</p>
-                                    </div>
+                                <input 
+                                    type="file" 
+                                    ref={fileInputRef}
+                                    className="hidden" 
+                                    accept=".csv, .pdf, image/png, image/jpeg"
+                                    onChange={handleFileUpload}
+                                />
+                                <div className="w-20 h-20 bg-white rounded-full shadow-lg flex items-center justify-center mx-auto mb-6 group-hover:-translate-y-2 transition-transform">
+                                    <UploadCloud className="w-10 h-10 text-blue-500" />
                                 </div>
-                                <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                                <h5 className="text-lg font-bold text-slate-800 mb-2">Arrastra tu archivo aquí</h5>
+                                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">o haz clic para explorar tus carpetas</p>
+                                
+                                <div className="mt-6 flex justify-center gap-3">
+                                   <span className="px-3 py-1 bg-white rounded-full text-[10px] font-black uppercase text-slate-500 border border-slate-200 shadow-sm">PDF</span>
+                                   <span className="px-3 py-1 bg-white rounded-full text-[10px] font-black uppercase text-slate-500 border border-slate-200 shadow-sm">CSV</span>
+                                   <span className="px-3 py-1 bg-white rounded-full text-[10px] font-black uppercase text-slate-500 border border-slate-200 shadow-sm">PNG / JPG</span>
+                                </div>
                             </div>
 
-                            <p className="text-xs text-slate-400 mt-4">Asegúrate que el Bluetooth esté activo en ambos dispositivos.</p>
-                        </div>
-                    )}
-
-                    {/* STEP 3: PIN INPUT (POPUP STYLE) */}
-                    {step === 'PIN_INPUT' && (
-                        <div className="animate-fade-in text-center space-y-6">
-                            <div className="mx-auto w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mb-2">
-                                <LockClosedIcon className="w-8 h-8 text-brand-primary" />
-                            </div>
-                            
-                            <div>
-                                <h3 className="text-xl font-bold text-slate-800 dark:text-white mb-2">Vincula tu dispositivo</h3>
-                                <p className="text-sm text-slate-500">Ingresa el código PIN que aparece en la pantalla de tu glucómetro.</p>
-                            </div>
-
-                            <input 
-                                type="number" 
-                                value={pin}
-                                onChange={(e) => setPin(e.target.value)}
-                                placeholder="000000"
-                                className="w-full text-center text-3xl tracking-widest font-mono p-3 border-b-2 border-brand-primary bg-transparent focus:outline-none"
-                                autoFocus
-                            />
-
-                            <div className="flex gap-3 pt-4">
-                                <button 
-                                    onClick={() => setStep('SCANNING')}
-                                    className="flex-1 py-3 text-slate-500 font-semibold hover:bg-slate-100 rounded-xl"
-                                >
-                                    Cancelar
-                                </button>
-                                <button 
-                                    onClick={handlePinSubmit}
-                                    disabled={pin.length < 4}
-                                    className="flex-1 py-3 bg-brand-primary text-white font-bold rounded-xl shadow-md disabled:bg-slate-300 transition-colors"
-                                >
-                                    Vincular
-                                </button>
+                            {/* Trust Message */}
+                            <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-4 flex gap-4 items-start">
+                                <ShieldCheckIcon className="w-6 h-6 text-emerald-500 shrink-0" />
+                                <div>
+                                    <p className="text-sm font-bold text-emerald-800">Privacidad Clínica Garantizada</p>
+                                    <p className="text-xs font-medium text-emerald-600/80">Tus datos de salud están encriptados y protegidos bajo estándares médicos. Solo tú y tu profesional tratante pueden verlos.</p>
+                                </div>
                             </div>
                         </div>
                     )}
 
-                    {/* STEP 4: SYNCING (PROGRESS BAR) */}
-                    {step === 'SYNCING' && (
-                        <div className="text-center py-8 animate-fade-in">
-                            <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-6">Descargando registros...</h3>
-                            
-                            {/* Progress Bar Container */}
-                            <div className="w-full bg-slate-200 rounded-full h-4 mb-4 overflow-hidden relative">
+                    {/* STEP 4: ANALYSING MICRO-INTERACTION */}
+                    {step === 'ANALYSING' && (
+                        <div className="text-center py-16 animate-fade-in flex flex-col items-center">
+                            <div className="w-24 h-24 mb-8 relative">
+                                <div className="absolute inset-0 border-4 border-slate-100 rounded-full"></div>
                                 <div 
-                                    className="bg-brand-primary h-4 rounded-full transition-all duration-100 ease-out relative overflow-hidden" 
-                                    style={{ width: `${progress}%` }}
-                                >
-                                    {/* Shimmer Effect */}
-                                    <div className="absolute top-0 left-0 bottom-0 right-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer" style={{ backgroundSize: '200% 100%' }}></div>
-                                </div>
+                                    className="absolute inset-0 border-4 border-blue-600 rounded-full border-t-transparent animate-spin"
+                                ></div>
+                                <ActivityIcon className="w-10 h-10 text-blue-600 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 animate-pulse" />
                             </div>
                             
-                            <p className="text-sm text-slate-500 font-mono">{progress}% Completado</p>
+                            <h3 className="text-2xl font-[1000] text-slate-800 mb-2">{progress}%</h3>
+                            <p className="text-sm font-bold text-blue-600 uppercase tracking-widest mb-6 min-h-[20px]">{statusText}</p>
                             
-                            <div className="mt-8 flex justify-center">
-                                <SmartphoneIcon className="w-12 h-12 text-slate-300 animate-pulse" />
+                            <div className="w-full max-w-sm bg-slate-100 rounded-full h-2 overflow-hidden shadow-inner">
+                                <div 
+                                    className="bg-gradient-to-r from-blue-400 to-blue-600 h-full transition-all duration-75 ease-linear" 
+                                    style={{ width: `${progress}%` }}
+                                ></div>
+                            </div>
+                            
+                            <p className="text-[10px] text-slate-400 font-bold uppercase mt-8 flex items-center justify-center gap-2">
+                                <ShieldCheckIcon className="w-4 h-4" /> Encriptación Activa
+                            </p>
+                        </div>
+                    )}
+
+                    {/* STEP 5: VALIDATING DATA */}
+                    {step === 'VALIDATING' && extractedData && (
+                        <div className="text-center py-6 animate-fade-in flex flex-col items-center max-w-lg mx-auto">
+                            <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mb-6 shadow-sm border border-blue-100">
+                                <ActivityIcon className="w-8 h-8 text-blue-600" />
+                            </div>
+                            <h3 className="text-2xl font-[1000] text-slate-800 mb-2">Auditoría de Datos</h3>
+                            <p className="text-slate-500 font-medium mb-6">Hemos procesado tu documento exitosamente. Por favor verifica que el resumen sea consistente con tu dispositivo.</p>
+                            
+                            <div className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-6 mb-8 text-left space-y-4">
+                                <div>
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Resumen Clínico (IA)</span>
+                                    <p className="text-sm font-bold text-slate-700 mt-1">{extractedData.summary}</p>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-200">
+                                    <div>
+                                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Glucemias Detectadas</span>
+                                        <p className="text-xl font-black text-blue-600">{extractedData.detectedGlucoseReadings}</p>
+                                    </div>
+                                    <div>
+                                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Dosis de Insulina</span>
+                                        <p className="text-xl font-black text-blue-600">{extractedData.detectedInsulinDoses}</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="flex w-full gap-4">
+                                <button 
+                                    onClick={() => setStep('DROP_ZONE')}
+                                    className="flex-1 py-4 bg-slate-100 text-slate-500 font-bold uppercase tracking-widest rounded-xl hover:bg-slate-200 transition-all text-[10px]"
+                                >
+                                    Rechazar / Re-subir
+                                </button>
+                                <button 
+                                    onClick={handleConfirmValidation}
+                                    className="flex-1 py-4 bg-blue-600 text-white font-black uppercase tracking-widest rounded-xl shadow-lg hover:bg-blue-700 transition-all text-[10px] flex items-center justify-center gap-2"
+                                >
+                                    <CheckCircleIcon className="w-4 h-4" /> Sí, es Correcto
+                                </button>
                             </div>
                         </div>
                     )}
 
-                    {/* STEP 5: SUCCESS */}
+                    {/* STEP 6: SUCCESS */}
                     {step === 'SUCCESS' && (
-                        <div className="text-center py-6 animate-fade-in-up">
-                            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                                <CheckCircleIcon className="w-10 h-10 text-green-600" />
+                        <div className="text-center py-12 animate-fade-in flex flex-col items-center">
+                            <div className="w-24 h-24 bg-emerald-50 rounded-full flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(52,211,153,0.3)]">
+                                <CheckCircleIcon className="w-12 h-12 text-emerald-500" />
                             </div>
-                            <h3 className="text-2xl font-extrabold text-slate-800 dark:text-white mb-2">¡Sincronización Exitosa!</h3>
-                            <p className="text-slate-600 dark:text-slate-300 mb-8">
-                                Se descargaron <strong className="text-brand-secondary">{totalRecords} registros</strong> de glucemia automáticamente.
+                            <h3 className="text-3xl font-[1000] text-slate-800 uppercase italic tracking-tighter mb-2">¡Datos Procesados!</h3>
+                            <p className="text-slate-500 font-medium mb-8 max-w-sm">
+                                Se descargaron y analizaron <strong className="text-emerald-600">{totalRecords} registros clínicos</strong> exitosamente.
                             </p>
                             <button 
                                 onClick={onClose}
-                                className="w-full py-4 bg-brand-secondary text-white font-bold rounded-xl shadow-lg hover:bg-green-600 transition-transform transform hover:scale-[1.02]"
+                                className="w-full py-4 bg-slate-900 text-white font-black uppercase tracking-widest rounded-xl shadow-2xl hover:bg-slate-800 hover:-translate-y-1 transition-all text-xs"
                             >
-                                Ver Dashboard Actualizado
+                                Calcular Insights con IA
                             </button>
                         </div>
                     )}
 
                 </div>
             </div>
-            <style>{`
-                @keyframes shimmer {
-                    0% { transform: translateX(-100%); }
-                    100% { transform: translateX(100%); }
-                }
-                .animate-shimmer {
-                    animation: shimmer 1.5s infinite;
-                }
-            `}</style>
         </div>
     );
 };
 
-export default DeviceSyncModal;
+export default DeviceSyncModal; DeviceSyncModal;

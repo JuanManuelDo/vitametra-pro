@@ -40,9 +40,13 @@ const CarbInputForm: React.FC<CarbInputFormProps> = ({
           <div className="flex items-center px-8 py-6">
             <div className="mr-4 text-blue-600">
               {isLoading ? (
-                <Loader2 size={24} className="animate-spin" />
+                <div className="relative w-8 h-8">
+                  <div className="absolute inset-0 border-4 border-slate-100 rounded-full" />
+                  <div className="absolute inset-0 border-4 border-blue-600 rounded-full border-t-transparent animate-spin shadow-[0_0_15px_rgba(37,99,235,0.3)]" />
+                  <Sparkles size={12} className="absolute inset-0 m-auto text-blue-400 animate-pulse" />
+                </div>
               ) : (
-                <Sparkles size={24} />
+                <Sparkles size={24} className="text-blue-600 group-hover:scale-110 transition-transform" />
               )}
             </div>
             

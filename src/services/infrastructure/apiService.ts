@@ -6,8 +6,10 @@ import {
 import { 
     signOut, signInWithEmailAndPassword, createUserWithEmailAndPassword 
 } from "firebase/auth";
+import { getStorage, ref, uploadBytesResumable } from "firebase/storage";
+import { getFunctions, httpsCallable } from "firebase/functions";
 import { auth, db } from "./firebaseService"; 
-import { type UserData, type HistoryEntry, type Hba1cEntry } from '../types';
+import { type UserData, type HistoryEntry, type Hba1cEntry } from '../../types';
 
 export const apiService = {
     // --- AUTENTICACIÓN ---
@@ -103,24 +105,71 @@ export const apiService = {
         }
     },
 
-    // --- HISTORIAL Y APRENDIZAJE ---
+    // --- HISTORIAL Y APRENDIZAJE (ARQUITECTURA MENSUAL PRO) ---
     async addHistoryEntry(userId: string, data: Partial<HistoryEntry>) {
-        const historyRef = collection(db, "ingestas");
-        return await addDoc(historyRef, {
+        const functions = getFunctions();
+        const saveClinicalData = httpsCallable(functions, 'saveClinicalData');
+        
+        // Zod backend schema takes over validation. Dates are unified here.
+        const payload = {
             ...data,
-            userId,
-            createdAt: serverTimestamp(),
             date: data.date || new Date().toISOString()
+        };
+
+        const result = await saveClinicalData(payload);
+        return result.data as { success: boolean, id: string, message: string };
+    },
+
+    // --- SEGURIDAD DE ASSETS ---
+    async getSignedImageUrl(bucketPath: string): Promise<string> {
+        const functions = getFunctions();
+        const generateSecureSignedUrl = httpsCallable(functions, 'generateSecureSignedUrl');
+        
+        const result = await generateSecureSignedUrl({ bucketPath });
+        const data = result.data as { secureUrl: string };
+        return data.secureUrl;
+    },
+
+    /**
+     * Identifica los alimentos más frecuentes analizando el historial reciente.
+     */
+    async identifyFrequentFoods(userId: string): Promise<{ food: string, count: number }[]> {
+        const monthId = new Date().toISOString().slice(0, 7);
+        const logsRef = collection(db, "users", userId, "history", monthId, "logs");
+        const q = query(logsRef, orderBy("createdAt", "desc"), limit(100));
+        const snapshot = await getDoc(doc(logsRef, "dummy")); // Solo para obtener la referencia o usar getDocs
+        
+        // Versión simplificada para el agente:
+        const entries = await this.getHistoryForMonth(userId, monthId);
+        const foodMap: Record<string, number> = {};
+        
+        entries.forEach(e => {
+            if (e.foodName) {
+                const name = e.foodName.toLowerCase().trim();
+                foodMap[name] = (foodMap[name] || 0) + 1;
+            }
         });
+
+        return Object.entries(foodMap)
+            .map(([food, count]) => ({ food, count }))
+            .sort((a, b) => b.count - a.count)
+            .slice(0, 10);
+    },
+
+    async getHistoryForMonth(userId: string, monthId: string): Promise<HistoryEntry[]> {
+        const { getDocs } = await import("firebase/firestore");
+        const logsRef = collection(db, "users", userId, "history", monthId, "logs");
+        const q = query(logsRef, orderBy("createdAt", "desc"));
+        const snapshot = await getDocs(q);
+        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as HistoryEntry)); 
     },
 
     /**
      * CIERRE DE BUCLE (IP VITAMETRA): 
-     * Actualiza un registro de comida con los resultados post-prandiales
-     * para que la IA pueda aprender del éxito del bolo.
+     * Actualiza un registro de comida con los resultados post-prandiales.
      */
-    async closeLearningLoop(entryId: string, postGlucose: number, successScore: number, notes?: string) {
-        const entryRef = doc(db, "ingestas", entryId);
+    async closeLearningLoop(userId: string, monthId: string, entryId: string, postGlucose: number, successScore: number, notes?: string) {
+        const entryRef = doc(db, "users", userId, "history", monthId, "logs", entryId);
         return await updateDoc(entryRef, {
             postPrandialGlucose: postGlucose,
             successScore: successScore,
@@ -129,14 +178,14 @@ export const apiService = {
         });
     },
 
-    async deleteHistoryEntry(id: string) {
-        await deleteDoc(doc(db, "ingestas", id));
+    async deleteHistoryEntry(userId: string, monthId: string, entryId: string) {
+        await deleteDoc(doc(db, "users", userId, "history", monthId, "logs", entryId));
     },
 
     subscribeToHistory(userId: string, callback: (data: HistoryEntry[]) => void): Unsubscribe {
+        const monthId = new Date().toISOString().slice(0, 7);
         const q = query(
-            collection(db, "ingestas"), 
-            where("userId", "==", userId), 
+            collection(db, "users", userId, "history", monthId, "logs"), 
             orderBy("createdAt", "desc"), 
             limit(50)
         );
@@ -163,5 +212,81 @@ export const apiService = {
             daily_ia_usage: currentUsage + 1, 
             last_ia_usage_date: dateStr 
         });
+    },
+
+    // --- MEDICAL DEVICE UPLOAD & SYNC ---
+    async uploadMedicalReport(userId: string, file: File, onProgress?: (progress: number) => void): Promise<string> {
+        const fileId = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+        const storage = getStorage();
+        const fileRef = ref(storage, `users/${userId}/medical-reports/${fileId}`);
+
+        return new Promise((resolve, reject) => {
+            const uploadTask = uploadBytesResumable(fileRef, file);
+            uploadTask.on('state_changed', 
+                (snapshot) => {
+                    const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                    if (onProgress) onProgress(progress);
+                },
+                (error) => reject(error),
+                () => resolve(fileId) // Return fileId so UI knows which document to watch
+            );
+        });
+    },
+
+    subscribeToPendingReport(userId: string, fileId: string, callback: (data: any) => void): Unsubscribe {
+        const reportRef = doc(db, "users", userId, "pending_reports", fileId);
+        return onSnapshot(reportRef, (snapshot) => {
+            if (snapshot.exists()) {
+                callback({ id: snapshot.id, ...snapshot.data() });
+            }
+        }, (error) => console.error(error));
+    },
+
+    async confirmAndSaveMedicalData(userId: string, pendingReportId: string, extractedData: any) {
+        // Here we map the extracted Gemini format to our HistoryEntry format.
+        // Data contains extractedData.glucose, extractedData.insulin, etc.
+        const monthId = new Date().toISOString().slice(0, 7);
+        const batch = [];
+        const { writeBatch } = await import("firebase/firestore");
+        const fbBatch = writeBatch(db);
+
+        // Map Glucose Readings
+        if (extractedData.glucose && Array.isArray(extractedData.glucose)) {
+            extractedData.glucose.forEach((g: any) => {
+                const newRef = doc(collection(db, "users", userId, "history", monthId, "logs"));
+                fbBatch.set(newRef, {
+                    userId,
+                    monthId,
+                    type: "GLUCOSE_READING",
+                    date: g.timestamp,
+                    glucose: g.value,
+                    createdAt: serverTimestamp(),
+                    source: "DEVICE_IMPORT"
+                });
+            });
+        }
+
+        // Map Insulin Doses
+        if (extractedData.insulin && Array.isArray(extractedData.insulin)) {
+            extractedData.insulin.forEach((i: any) => {
+                const newRef = doc(collection(db, "users", userId, "history", monthId, "logs"));
+                fbBatch.set(newRef, {
+                    userId,
+                    monthId,
+                    type: "INSULIN_DOSE",
+                    date: i.timestamp,
+                    insulinType: i.type,
+                    insulinDose: i.units,
+                    createdAt: serverTimestamp(),
+                    source: "DEVICE_IMPORT"
+                });
+            });
+        }
+
+        // Execute mapping
+        await fbBatch.commit();
+
+        // Remove from pending validation queue
+        await deleteDoc(doc(db, "users", userId, "pending_reports", pendingReportId));
     }
 };

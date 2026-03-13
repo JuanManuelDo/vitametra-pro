@@ -25,7 +25,15 @@ const ChatBot: React.FC<ChatBotProps> = ({ currentUser }) => {
     setMessages(prev => [...prev, userMsg]);
     setInput('');
     setTimeout(() => {
-      const response = { id: (Date.now() + 1).toString(), role: 'assistant', content: input.toLowerCase().includes('pro') ? 'Vitametra PRO desbloquea análisis molecular avanzado.' : 'Sugerencia: Ingiere fibra antes de esos carbohidratos.', type: input.toLowerCase().includes('pro') ? 'cta' : 'text' };
+      // Respuesta falsa para simulación si la IA falla o de base
+      const response = {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: input.toLowerCase().includes('pro')
+              ? 'Analizando tu reporte... Todo listo. Aquí tienes tus tendencias.'
+              : 'Analizando tu reporte... Todo listo. Aquí tienes tus tendencias.',
+          type: input.toLowerCase().includes('pro') ? 'cta' : 'text'
+      };
       setMessages(prev => [...prev, response]);
     }, 800);
   };
@@ -33,7 +41,7 @@ const ChatBot: React.FC<ChatBotProps> = ({ currentUser }) => {
   return (
     <>
       {/* El Orbe Flotante */}
-      <button 
+      <button
         onClick={() => setIsOpen(true)}
         className={`fixed bottom-24 right-6 w-16 h-16 rounded-full flex items-center justify-center transition-all duration-500 z-[999] active:scale-90 ${
           isOpen ? 'scale-0 opacity-0' : 'bg-metra-blue shadow-[0_0_30px_rgba(0,122,255,0.4)] hover:shadow-metra-blue/60'
@@ -52,8 +60,8 @@ const ChatBot: React.FC<ChatBotProps> = ({ currentUser }) => {
                    <Sparkles size={20} className="text-white" />
                 </div>
                 <div>
-                   <p className="text-[9px] font-black text-metra-blue uppercase tracking-widest">Neural Link</p>
-                   <h3 className="text-xl font-black italic tracking-tighter uppercase">Bio-Assistant</h3>
+                   <h3 className="font-extrabold text-xs text-slate-800 tracking-tight uppercase italic">VitaMetras <span className="text-blue-600">Assistant</span></h3>
+                   <p className="text-[9px] font-black text-slate-400 tracking-widest uppercase flex items-center gap-1">Neural Link</p>
                 </div>
              </div>
              <button onClick={() => setIsOpen(false)} className="bg-white/10 p-3 rounded-2xl relative z-10 hover:bg-white/20">
@@ -80,9 +88,9 @@ const ChatBot: React.FC<ChatBotProps> = ({ currentUser }) => {
 
           <div className="p-6 bg-white border-t border-slate-50">
             <form onSubmit={handleSendMessage} className="relative">
-              <input 
+              <input
                 value={input} onChange={(e) => setInput(e.target.value)}
-                placeholder="Consulta al Bio-Core..."
+                    placeholder="Pregúntale a VitaMetras..."
                 className="w-full bg-slate-50 border-none rounded-2xl py-5 pl-6 pr-16 text-xs font-black uppercase tracking-widest outline-none focus:ring-2 ring-metra-blue/10"
               />
               <button type="submit" className="absolute right-2 top-1/2 -translate-y-1/2 bg-metra-dark text-white p-3 rounded-xl shadow-lg">

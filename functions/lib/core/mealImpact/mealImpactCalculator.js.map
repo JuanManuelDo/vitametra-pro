@@ -1,1 +1,1 @@
-{"version":3,"file":"mealImpactCalculator.js","sourceRoot":"","sources":["../../../src/core/mealImpact/mealImpactCalculator.ts"],"names":[],"mappings":""}
+{"version":3,"file":"mealImpactCalculator.js","sourceRoot":"","sources":["../../../src/core/mealImpact/mealImpactCalculator.ts"],"names":[],"mappings":";;AAAA,kDAKC;AALD,SAAgB,mBAAmB,CAAC,IAAS;IACzC,OAAO;QACH,WAAW,EAAE,CAAC;QACd,GAAG,IAAI;KACV,CAAC;AACN,CAAC"}

@@ -63,8 +63,8 @@ const DataImporter = () => {
   };
 
   return (
-    <div className="max-w-xl mx-auto">
-      <div className={`relative overflow-hidden bg-white p-10 rounded-[3rem] border-2 border-dashed transition-all duration-700 ${
+    <div className="max-w-xl mx-auto px-4 sm:px-0">
+      <div className={`relative overflow-hidden bg-white p-6 sm:p-10 rounded-[2.5rem] sm:rounded-[3rem] border-2 border-dashed transition-all duration-700 ${
         status === 'success' ? 'border-emerald-500 bg-emerald-50/50' : 
         status === 'error' ? 'border-red-200 bg-red-50/50' : 
         'border-slate-200 hover:border-blue-400 shadow-2xl shadow-slate-100'
@@ -97,15 +97,15 @@ const DataImporter = () => {
              <Upload size={40} />}
           </motion.div>
 
-          <div className="text-center space-y-2">
-            <h3 className="text-2xl font-[1000] uppercase italic tracking-tighter text-slate-900">
+          <div className="text-center space-y-2 max-w-xs mx-auto">
+            <h3 className="text-xl sm:text-2xl font-[1000] uppercase italic tracking-tighter text-slate-900">
               {status === 'processing' ? 'Metra está leyendo...' : 
                status === 'success' ? 'Sincronización Completa' : 
                'Cargar Reporte Médico'}
             </h3>
             <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.3em]">
               {status === 'success' 
-                ? `Hemos procesado ${processedCount} registros con éxito` 
+                ? 'Análisis completo. Tu médico verá esta tendencia en tu próximo reporte.' 
                 : 'Analiza tu Bomba o Glucómetro en segundos'}
             </p>
           </div>
@@ -116,7 +116,7 @@ const DataImporter = () => {
               animate={{ opacity: 1 }}
               className="flex items-center gap-2 text-emerald-600 font-bold text-xs italic"
             >
-              Redirigiendo a tus nuevos Insights... <ArrowRight size={14} className="animate-bounce-x" />
+              Cerrando ciclo clínico... <ArrowRight size={14} className="animate-bounce-x" />
             </motion.div>
           )}
 

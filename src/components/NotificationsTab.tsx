@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import type { Reminder } from '../types'
 import { requestNotificationPermission } from '../utils/notifications'
 import { BellIcon, TrashIcon, CheckCircleIcon, XCircleIcon } from './ui/Icons'
+import { showAlert } from '../utils/alerts';
 
 interface NotificationsTabProps {
   reminders: Reminder[];
@@ -31,7 +32,7 @@ const NotificationsTab: React.FC<NotificationsTabProps> = ({ reminders, onAddRem
       setTime('');
       setMessage('');
     } else if (permission !== 'granted') {
-        alert('Por favor, habilita las notificaciones para poder crear un recordatorio.');
+        showAlert("Aviso", "Por favor, habilita las notificaciones para poder crear un recordatorio.", "warning");
     }
   };
   

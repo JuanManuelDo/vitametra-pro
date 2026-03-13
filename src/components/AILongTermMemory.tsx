@@ -3,6 +3,7 @@ import { Brain, Sparkles, History, Save, MessageSquare, Loader2 } from 'lucide-r
 // RUTA CORREGIDA: Apuntando a la nueva arquitectura de infraestructura
 import { apiService } from '../services/infrastructure/apiService';
 import type { UserData } from '../types';
+import { showAlert } from '../utils/alerts';
 
 interface AILongTermMemoryProps {
   currentUser: UserData;
@@ -30,7 +31,7 @@ const AILongTermMemory: React.FC<AILongTermMemoryProps> = ({ currentUser }) => {
       setIsEditing(false);
     } catch (error) {
       console.error("Error al guardar la memoria IA:", error);
-      alert("No se pudo sincronizar la memoria con el núcleo.");
+      showAlert("Error", "No se pudo sincronizar la memoria con el núcleo.", "error");
     } finally {
       setIsSaving(false);
     }

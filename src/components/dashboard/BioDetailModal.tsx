@@ -15,10 +15,10 @@ interface BioDetailModalProps {
 export const BioDetailModal: React.FC<BioDetailModalProps> = ({ isOpen, onClose, data }) => {
   if (!isOpen || !data) return null;
 
-  // Lógica de simulación de "frenos metabólicos" (Proteína y Fibra)
-  // En una fase posterior, estos vendrán del NutritionParser
-  const mockProtein = Math.floor(data.carbs * 0.2) + 5;
-  const mockFiber = Math.floor(data.carbs * 0.1) + 2;
+  // Lógica de "frenos metabólicos" (Proteína y Fibra)
+  // Estimaciones bio-químicas basadas en la carga de carbohidratos detectada
+  const estimatedProtein = (data as any).protein || Math.floor(data.carbs * 0.2);
+  const estimatedFiber = (data as any).fiber || Math.floor(data.carbs * 0.1);
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-300">
@@ -73,7 +73,7 @@ export const BioDetailModal: React.FC<BioDetailModalProps> = ({ isOpen, onClose,
                 <Zap size={16} fill="currentColor" />
                 <span className="text-[9px] font-[1000] uppercase tracking-tighter">Proteína</span>
               </div>
-              <p className="text-2xl font-[1000] text-slate-900 italic">{mockProtein}g</p>
+              <p className="text-2xl font-[1000] text-slate-900 italic">{estimatedProtein}g</p>
               <p className="text-[8px] font-bold text-slate-400 uppercase mt-1">Freno de Absorción</p>
             </div>
 
@@ -82,7 +82,7 @@ export const BioDetailModal: React.FC<BioDetailModalProps> = ({ isOpen, onClose,
                 <Wind size={16} />
                 <span className="text-[9px] font-[1000] uppercase tracking-tighter">Fibra</span>
               </div>
-              <p className="text-2xl font-[1000] text-slate-900 italic">{mockFiber}g</p>
+              <p className="text-2xl font-[1000] text-slate-900 italic">{estimatedFiber}g</p>
               <p className="text-[8px] font-bold text-slate-400 uppercase mt-1">Reductor de Pico</p>
             </div>
           </div>

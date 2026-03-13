@@ -105,7 +105,7 @@ export const AnalysisResultView: React.FC<Props> = ({ result, foodName, onSaveSu
         
         <div className="flex items-center gap-2 mb-4">
             <div className="h-2 w-2 bg-metra-blue rounded-full animate-pulse" />
-            <h4 className="font-black text-metra-blue text-[10px] uppercase tracking-[0.2em]">Bio-Vitametra Neural Optimization</h4>
+            <h4 className="font-black text-metra-blue text-[10px] uppercase tracking-[0.2em]">Bio-VitaMetras Neural Optimization</h4>
         </div>
         
         <p className="text-slate-200 text-sm leading-relaxed font-medium">

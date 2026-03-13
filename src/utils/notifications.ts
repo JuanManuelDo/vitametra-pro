@@ -1,4 +1,5 @@
 import type { Reminder } from '../types';
+import { showAlert } from './alerts';
 
 const REMINDERS_STORAGE_KEY = 'vitametra_reminders';
 
@@ -38,7 +39,7 @@ const showNotification = (message: string) => {
 
 export const requestNotificationPermission = async (): Promise<NotificationPermission> => {
   if (!('Notification' in window)) {
-    alert('Este navegador no soporta notificaciones de escritorio.');
+    showAlert("No Soportado", "Este navegador no soporta notificaciones de escritorio.", "warning");
     return 'denied';
   }
   return Notification.requestPermission();

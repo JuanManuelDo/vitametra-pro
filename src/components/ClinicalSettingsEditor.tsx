@@ -3,6 +3,7 @@ import { Activity, Save } from 'lucide-react';
 // RUTA CORREGIDA: Desde src/components subimos a src/ con ../ y entramos a services
 import { apiService } from '../services/infrastructure/apiService';
 import type { UserData, DiabetesType } from '../types';
+import { showAlert } from '../utils/alerts';
 
 interface ClinicalSettingsEditorProps {
   currentUser: UserData;
@@ -47,7 +48,7 @@ const ClinicalSettingsEditor: React.FC<ClinicalSettingsEditorProps> = ({ current
 
     } catch (error) {
       console.error(error);
-      alert("❌ Error al sincronizar con el Bio-Core");
+      showAlert("Error", "Error al sincronizar con el Bio-Core", "error");
     } finally {
       setIsSaving(false);
     }

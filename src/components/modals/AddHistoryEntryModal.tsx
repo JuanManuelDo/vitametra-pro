@@ -5,6 +5,7 @@ import Spinner from './Spinner';
 // RUTA CORREGIDA A INFRAESTRUCTURA
 import { apiService } from '../../services/infrastructure/apiService';
 import { useNavigate } from 'react-router-dom';
+import { showAlert } from '../../utils/alerts';
 
 interface AddHistoryEntryModalProps {
   initialDate: Date;
@@ -76,12 +77,12 @@ const AddHistoryEntryModal: React.FC<AddHistoryEntryModalProps> = ({ initialDate
     }
 
     if (!totalCarbs && !bloodGlucose && !foodDetail) {
-        alert("Por favor ingresa al menos un dato para el registro.");
+        showAlert("Aviso", "Por favor ingresa al menos un dato para el registro.", "warning");
         return;
     }
     
     if (!totalCarbs && foodDetail && !isPro) {
-        alert("En el plan BASE, debes ingresar los carbohidratos manualmente para guardar el registro.");
+        showAlert("Plan BASE", "En el plan BASE, debes ingresar los carbohidratos manualmente para guardar el registro.", "warning");
         return;
     }
 
@@ -106,7 +107,7 @@ const AddHistoryEntryModal: React.FC<AddHistoryEntryModalProps> = ({ initialDate
         });
     } catch (error) {
         console.error("Save error:", error);
-        alert("Error al guardar el registro clínico.");
+        showAlert("Error", "Error al guardar el registro clínico.", "error");
     } finally {
         setIsSaving(false);
     }

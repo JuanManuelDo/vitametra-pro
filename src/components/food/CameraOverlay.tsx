@@ -1,13 +1,15 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect } from 'react';
 import { Camera, X, RefreshCw, Zap } from 'lucide-react';
+import { showAlert } from '../../utils/alerts';
 
 interface CameraOverlayProps {
   onClose: () => void;
+  onCapture?: (imageData: string) => void;
 }
 
-const CameraOverlay = ({ onClose }: CameraOverlayProps) => {
+const CameraOverlay = ({ onClose, onCapture }: CameraOverlayProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [stream, setStream] = useState<MediaStream | null>(null);
+  const activeStreamRef = useRef<MediaStream | null>(null);
 
   useEffect(() => {
     async function setupCamera() {
@@ -16,22 +18,39 @@ const CameraOverlay = ({ onClose }: CameraOverlayProps) => {
           video: { facingMode: 'environment', width: { ideal: 1080 }, height: { ideal: 1080 } },
           audio: false
         });
-        setStream(s);
+        activeStreamRef.current = s;
         if (videoRef.current) videoRef.current.srcObject = s;
       } catch (err) {
         console.error("Error cámara:", err);
-        alert("No se pudo acceder a la cámara");
+        showAlert("Error de Cámara", "No se pudo acceder a la cámara. Revisa los permisos.", "error");
         onClose();
       }
     }
     setupCamera();
 
-    return () => stream?.getTracks().forEach(t => t.stop());
+    return () => {
+      if (activeStreamRef.current) {
+        activeStreamRef.current.getTracks().forEach(t => {
+            t.stop();
+            console.log("Track detenido:", t.label);
+        });
+        activeStreamRef.current = null;
+      }
+    };
   }, []);
 
   const handleCapture = () => {
-    // Aquí iría la lógica para enviar el frame al backend/IA
-    alert("Analizando plato con Bio-Core...");
+    if (videoRef.current && onCapture) {
+      const canvas = document.createElement('canvas');
+      canvas.width = videoRef.current.videoWidth;
+      canvas.height = videoRef.current.videoHeight;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+        const imageData = canvas.toDataURL('image/jpeg');
+        onCapture(imageData);
+      }
+    }
     onClose();
   };
 

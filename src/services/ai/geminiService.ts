@@ -1,8 +1,9 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { UserData } from "../../types";
 
 const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY || "");
 
-export const analyzeFoodText = async (prompt: string) => {
+export const analyzeFoodText = async (prompt: string, user?: UserData) => {
   try {
     if (!import.meta.env.VITE_GEMINI_API_KEY) return null;
 
@@ -17,15 +18,7 @@ export const analyzeFoodText = async (prompt: string) => {
     return response.text();
 
   } catch (error: any) {
-    // Si falla el servidor de Google, devolvemos un JSON simulado para que la app no explote
     console.error("Gemini Error:", error);
-    return JSON.stringify({
-        totalCarbs: 20, 
-        calories: 150, 
-        protein: 5, 
-        fat: 5, 
-        glycemicIndex: "Medio",
-        optimizationTip: "No pudimos conectar con la IA, mostrando valores estimados."
-    });
+    throw new Error("No pudimos conectar con la IA para analizar tu comida. Por favor, revisa tu conexión o intenta con un registro manual.");
   }
 };

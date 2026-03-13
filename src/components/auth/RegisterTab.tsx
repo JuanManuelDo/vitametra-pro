@@ -78,7 +78,7 @@ const RegisterTab: React.FC<RegisterTabProps> = ({ onLoginSuccess }) => {
                 memory: {
                     patterns: { highGlucoseTriggers: [], effectiveCorrections: [], notableEvents: [] },
                     preferences: { dietaryRestrictions: [], favoriteSafeFoods: [] },
-                    aiNotes: `Protocolo Bio-Vitametra activado para ${formData.firstName}.`
+                    aiNotes: `Protocolo Bio-VitaMetras activado para ${formData.firstName}.`
                 }
             };
 
@@ -220,7 +220,7 @@ const RegisterTab: React.FC<RegisterTabProps> = ({ onLoginSuccess }) => {
                             
                             <div className="space-y-4">
                                 <p className="text-center text-[10px] text-slate-400 font-bold italic leading-relaxed px-4">
-                                    Al activar VitaFlow, autorizas el procesamiento de biometría mediante algoritmos de salud preventiva.
+                                    Al activar VitaMetras, autorizas el procesamiento de biometría mediante algoritmos de salud preventiva.
                                 </p>
                                 <button 
                                     onClick={handleFinalRegister} 

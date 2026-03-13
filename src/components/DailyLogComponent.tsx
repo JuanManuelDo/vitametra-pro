@@ -8,8 +8,9 @@ import {
     SparklesIcon, ArrowRightIcon, CheckBadgeIcon, HeartIcon, InformationCircleIcon,
     XMarkIcon
 } from './ui/Icons'
-import MealDetailModal from './modals/from './MealDetailModal'';
+import MealDetailModal from './modals/MealDetailModal';
 import { MetraCore, type CommunitySuggestion } from '../services/metraCore'
+import { showToast } from '../utils/alerts';
 
 interface DailyLogProps {
     history: HistoryEntry[];
@@ -132,7 +133,7 @@ const DailyLogComponent: React.FC<DailyLogProps> = ({ history, currentUser, onQu
                                     {hasEntries ? (
                                         <div className="space-y-3">
                                             {entries.map((entry, idx) => (
-                                                <div key={entry.id} className={`flex items-center justify-between ${idx > 0 ? 'pt-3 border-t border-slate-50' : '}`}>
+                                                <div key={entry.id} className={`flex items-center justify-between ${idx > 0 ? 'pt-3 border-t border-slate-50' : ''}`}>
                                                     <div>
                                                         <h4 className="text-lg font-black text-slate-800 tracking-tight">
                                                             {entry.totalCarbs}g <span className="text-xs text-slate-400 font-bold uppercase tracking-tighter ml-1">Carbohidratos</span>
@@ -241,7 +242,7 @@ const DailyLogComponent: React.FC<DailyLogProps> = ({ history, currentUser, onQu
                                                     </div>
                                                     <div className="flex gap-2">
                                                         <button 
-                                                            onClick={() => alert("Agregado a favoritos (Demo)")}
+                                                            onClick={() => showToast("Agregado a favoritos (Demo)", "success")}
                                                             className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-slate-400 hover:text-red-400 transition-colors"
                                                             title="Guardar en favoritos"
                                                         >

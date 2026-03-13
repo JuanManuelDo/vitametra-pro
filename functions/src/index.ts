@@ -61,3 +61,10 @@ export { whatsappWebhook } from "./interfaces/whatsapp/webhook";
 
 // Exportar la nueva función multimodal Nutria 2.0
 export { processNutriaInput } from "./api/processNutriaInput";
+
+// Exportar procesamiento de archivos de dispositivos
+export { processMedicalDeviceFile } from "./api/processMedicalDeviceFile";
+
+// Exportar Funciones de Seguridad e Integridad HIPAA
+export { saveClinicalData } from "./api/saveClinicalData";
+export { generateSecureSignedUrl } from "./api/generateSecureSignedUrl";

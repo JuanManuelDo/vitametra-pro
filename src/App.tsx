@@ -74,6 +74,10 @@ const App: React.FC = () => {
         } else {
           setIsLoggedIn(false);
           setCurrentUser(null);
+          // QA: Resetear estados globales para evitar filtraciones de sesión previa
+          setAnalysis({ input: '', isLoading: false, result: null, error: null });
+          setDataStreams({ history: [], hba1c: [] });
+          setActiveClosure(null);
         }
       } catch (e) {
         console.error("Auth Error:", e);
@@ -121,8 +125,9 @@ const App: React.FC = () => {
 
   // LOGICA DE CIERRE DE BUCLE (IP REAL)
   const handleFinalizeClosure = async (id: string, glucose: number, score: number, insight: string) => {
+    if (!currentUser?.id || !activeClosure?.monthId) return;
     try {
-      await apiService.closeLearningLoop(id, glucose, score, insight);
+      await apiService.closeLearningLoop(currentUser.id, activeClosure.monthId, id, glucose, score, insight);
       setActiveClosure(null);
       notify("Bucle metabólico cerrado. IA optimizada.");
     } catch (e) {
@@ -137,8 +142,8 @@ const App: React.FC = () => {
   );
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC]">
-      {isLoggedIn && currentUser && <WelcomeModal />}
+    <div className="min-h-screen bg-white">
+      {isLoggedIn && currentUser && <WelcomeModal currentUser={currentUser} />}
       
       <Header 
         isLoggedIn={isLoggedIn} 
@@ -197,7 +202,12 @@ const App: React.FC = () => {
           <Route path="/history" element={
             isLoggedIn && currentUser ? (
               <HistoryTab currentUser={currentUser} history={dataStreams.history} hba1cHistory={dataStreams.hba1c} 
-                onDelete={(id) => { apiService.deleteHistoryEntry(id); notify("Eliminado"); }} 
+                onDelete={(entry: any) => { 
+                    if (entry.id && entry.monthId) {
+                        apiService.deleteHistoryEntry(currentUser.id, entry.monthId, entry.id); 
+                        notify("Eliminado"); 
+                    }
+                }} 
                 onUpdate={() => {}} onSaveHba1c={() => {}} onUpdateHba1c={() => {}} onDeleteHba1c={() => {}} onUpdateLayout={() => {}} onNavigateToAnalyzer={() => navigate('/analyzer')} 
               />
             ) : <Navigate to="/" />

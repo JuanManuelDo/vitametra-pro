@@ -1,9 +1,9 @@
 
 import React, { useState, useEffect } from 'react'
 import type { UserData } from '../types'
-import { CheckCircleIcon, SparklesIcon, StarIcon } from './ui/Icons'
 import Spinner from './ui/Spinner'
 import { crearPreferenciaMP } from '../services/firebaseService'
+import { showAlert } from '../utils/alerts';
 
 // Extender ventana para el SDK de MP inyectado
 declare var MercadoPago: any;
@@ -23,7 +23,10 @@ const SubscriptionView: React.FC<SubscriptionViewProps> = ({ currentUser }) => {
   });
 
   const handleBuy = async (title: string, price: number) => {
-    if (!currentUser) return alert("Por favor inicia sesión.");
+    if (!currentUser) {
+        showAlert("Aviso", "Por favor inicia sesión.", "warning");
+        return;
+    }
     
     setIsGenerating(true);
     setPreferenceId(null);
@@ -36,7 +39,7 @@ const SubscriptionView: React.FC<SubscriptionViewProps> = ({ currentUser }) => {
       }
     } catch (error) {
       console.error(error);
-      alert("Error al conectar con Mercado Pago.");
+      showAlert("Error", "Error al conectar con Mercado Pago.", "error");
     } finally {
       setIsGenerating(false);
     }

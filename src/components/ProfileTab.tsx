@@ -239,7 +239,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ currentUser, onUpdateUser }) =>
       {/* FOOTER TÉCNICO */}
       <footer className="py-20 text-center opacity-30">
         <Zap size={20} fill="currentColor" className="mx-auto mb-4 text-slate-400" />
-        <p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.6em]">Vitametra Engine v4.2.0 • 2026</p>
+        <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.6em]">Vitametra OS • 2026</p>
       </footer>
 
       {/* MODALES DE CONFIGURACIÓN */}

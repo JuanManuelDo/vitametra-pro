@@ -10,7 +10,7 @@ const WelcomeModal: React.FC<WelcomeModalProps> = ({ currentUser }) => {
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
-    const hasSeenWelcome = localStorage.getItem('vitaflow_welcome_seen');
+    const hasSeenWelcome = localStorage.getItem('vitametras_welcome_seen');
     // Solo abrir si no lo ha visto Y si el usuario ya cargó
     if (!hasSeenWelcome && currentUser) {
       const timer = setTimeout(() => setIsOpen(true), 1000);
@@ -19,7 +19,7 @@ const WelcomeModal: React.FC<WelcomeModalProps> = ({ currentUser }) => {
   }, [currentUser]);
 
   const handleClose = () => {
-    localStorage.setItem('vitaflow_welcome_seen', 'true');
+    localStorage.setItem('vitametras_welcome_seen', 'true');
     setIsOpen(false);
   };
 
@@ -36,7 +36,7 @@ const WelcomeModal: React.FC<WelcomeModalProps> = ({ currentUser }) => {
             Hola, <span className="text-blue-600">{currentUser.firstName || 'Usuario'}</span>
           </h2>
           <p className="text-slate-500 font-medium leading-relaxed mb-10">
-            Has activado tu ecosistema <span className="font-bold text-slate-800">VitaFlow</span>.
+            Has activado tu ecosistema <span className="font-bold text-slate-800">VitaMetras</span>.
           </p>
           <button 
             onClick={handleClose}

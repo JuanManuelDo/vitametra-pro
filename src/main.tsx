@@ -5,7 +5,7 @@ import './index.css'; // Mantenemos la carga de estilos al principio
 import VitametrasApp from './App';
 
 // Log de control para verificar despliegue en consola
-console.log("🚀 VitaMetra Core: Iniciando sistemas biométricos...");
+console.log("🚀 VitaMetras Core: Iniciando sistemas biométricos...");
 
 const rootElement = document.getElementById('root');
 
